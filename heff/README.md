@@ -119,7 +119,7 @@ error, never a silent fallback. `python3 -m atomci_heff.config` prints the value
 ## Data of the production spaces
 
 The Level 1 inputs (the H_eff dumps, the per-space results and two orbital files; 134 files, 3.7 MB) are not in
-the repository; they are distributed separately (`[to be added]`). Their layout is that of `HEFF_WORK`, and
+the repository; they are distributed separately. Their layout is that of `HEFF_WORK`, and
 [`checks/manifest_level1.txt`](checks/manifest_level1.txt) lists the files. The repository itself needs no external
 data: the tests and the examples run with the repository alone.
 
