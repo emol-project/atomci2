@@ -30,7 +30,8 @@
     "transition-metal ions"
   ],
   "related_identifiers": [
-    {"identifier": "10.5281/zenodo.24045823", "relation": "isDerivedFrom", "scheme": "doi", "resource_type": "software"}
+    {"identifier": "10.5281/zenodo.24045823", "relation": "isDerivedFrom", "scheme": "doi", "resource_type": "software"},
+    {"identifier": "10.5281/zenodo.24223209", "relation": "isDocumentedBy", "scheme": "doi", "resource_type": "publication-technicalnote"}
   ],
   "notes": "Non-commercial research and educational use only; commercial use is not permitted. The terms are in LEGENDS.txt, which governs this software whatever licence field this record shows."
 }

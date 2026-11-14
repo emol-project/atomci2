@@ -97,3 +97,21 @@ references:
     title: "ATOMCI: a non-relativistic configuration interaction program for many-electron atoms"
     doi: 10.5281/zenodo.24045823
     repository-code: "https://github.com/emol-project/atomci"
+  - type: report
+    authors:
+      - family-names: Honda
+        given-names: Hiroaki
+      - family-names: Miura
+        given-names: Nobuaki
+      - family-names: Sekiya
+        given-names: Masahiro
+      - family-names: Noro
+        given-names: Takeshi
+      - family-names: Osanai
+        given-names: You
+    title: "ATOMCI2: a configuration interaction program for many-electron atoms in LS coupling with the Breit-Pauli Hamiltonian and atomic properties. Program description, theory, and input guide"
+    notes: Technical note
+    publisher:
+      name: Zenodo
+    doi: 10.5281/zenodo.24223209
+    year: 2026

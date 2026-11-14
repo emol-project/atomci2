@@ -50,7 +50,7 @@ ATOMCI2 has three parts and an application package:
 
 The C code reimplements ATOMCI's angular method (the two papers above) and
 was checked against the Fortran, other programs and the literature; the
-formulation and the checks are in the ATOMCI2 technical note.
+formulation and the checks are in the [ATOMCI2 technical note](https://doi.org/10.5281/zenodo.24223209).
 
 ## Status
 
@@ -190,7 +190,7 @@ The C tools:
 | [samples/README.md](samples/README.md) | The examples |
 | [docs/ATINPUTS_PY.md](docs/ATINPUTS_PY.md) | The `scripts/atinputs` generator (`atinpgen`) in full: `.inp` format, keys, checks, raw blocks and payloads, several passes |
 | [docs/FPL_LANGUAGE_SPEC.md](docs/FPL_LANGUAGE_SPEC.md) | Quick reference for FPL, the in-tree Fortran preprocessor language |
-| ATOMCI2 technical note (Zenodo) | The formulation of the C tools (angular algebra, Breit–Pauli terms, properties) and their validation, and the effective Hamiltonians of `heff/` |
+| [ATOMCI2 technical note](https://doi.org/10.5281/zenodo.24223209) | **Technical note** (PDF, on Zenodo): the formulation of the C tools (angular algebra, Breit–Pauli terms, properties) and their validation, and the effective Hamiltonians of `heff/` |
 | [docs/C_SPIN_MANUAL.md](docs/C_SPIN_MANUAL.md) | **Input manual of the C tools** `acatsp` and `acfs`: options, input files, reading the output, the examples |
 | [c/README.md](c/README.md) | The C modules and tools |
 | [c/examples/README.md](c/examples/README.md) | The examples of the C tools |

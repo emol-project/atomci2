@@ -5,7 +5,7 @@ configuration of V²⁺, Cr³⁺, Mn⁴⁺, Fe⁵⁺ (d³) and Fe²⁺, Co³⁺ 
 project H_eff onto the operator basis of the parametric theory (Racah B, C, α, β, the three-body T1..T4, the
 four-body f1..f12), apply corrections computed in smaller spaces, and compare the results with fits of the NIST
 levels and with parameter sets from the literature. The method and the checks are described in Sec. 10 of the
-ATOMCI2 technical note.
+[ATOMCI2 technical note](https://doi.org/10.5281/zenodo.24223209).
 
 ATOMCI is not modified. The code runs the ATOMCI binary built from this repository and reads the binary scratch
 files ATOMCI writes (CI matrix units 38/39, the CSF list, the orbital file `be.NO`).
@@ -151,4 +151,4 @@ and cite
    Calculations for Many-Electron Atoms: ATOMCI", pp. 163–219 in *Methods and Techniques in Computational Chemistry:
    METECC-94*, edited by E. Clementi (ETEF, Cagliari, 1993).
 
-Please also cite the ATOMCI2 technical note when you use the effective-Hamiltonian code.
+Please also cite the [ATOMCI2 technical note](https://doi.org/10.5281/zenodo.24223209) when you use the effective-Hamiltonian code.

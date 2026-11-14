@@ -2,7 +2,7 @@
 
 > Ready-to-run examples: [`c/examples/`](../c/examples/README.md);
 > transition-metal examples for the Fortran ATOMCI: [`samples/native/`](../samples/native/README.md).
-> Theory and validation: the ATOMCI2 technical note.
+> Theory and validation: the [ATOMCI2 technical note](https://doi.org/10.5281/zenodo.24223209).
 
 The C version of ATOMCI (`c/`) adds the Breit–Pauli operators to the CI of LS
 terms, solves for the fine-structure levels in the LSJ basis, and prints

@@ -8,7 +8,7 @@ functions (CSFs) as expressions: angular coefficients times symbolic integrals,
 It is the angular engine of ATOMCI2, a C rewrite of the angular part of the ATOMCI program,
 taken out as a library. It uses the method of ATOMCI (F. Sasaki 1974 and the METECC-94
 chapter; `LEGENDS.txt`, Section 4): LS-coupled CSFs in O(3) x SU(2) x SU(2), with fractional
-parentage from a generated table. The formulation is in the ATOMCI2 technical note, Secs. 3
+parentage from a generated table. The formulation is in the [ATOMCI2 technical note](https://doi.org/10.5281/zenodo.24223209), Secs. 3
 and 4.1.
 
 The library is a self-contained folder of the ATOMCI2 repository and needs nothing outside it;
