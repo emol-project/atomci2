@@ -1,0 +1,9 @@
+NAME   ' F DOUBLET P                                                            '
+ISPIN 2 IORB 3 IPAR 1 NWT 35 NWF 1 ITSTV 2281 ITNEL 9 LIJB 2048 IDIAG 1
+LMAX 4 INT 9670 LWFL 2000 NTYPE 78 NREF 1 MXRPS 110
+ISSH 13 11 6 5
+NWTN 21:1 20:1 19:1 18:1 17:1 16:1 15:1 14:1 13:1 12:1 11:1 20:3 19:3 18:3 17:3 16:3 15:3 14:3 13:3 12:3 11:3 16:5 15:5 14:5 13:5 12:5 11:5 15:7 14:7 13:7 12:7 11:7 2:1 2:3 1:1
+NWTC 35
+NWSQ 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+CSF image: 78 types, 2281 CSFs, image words used 9670 of 9670
+data: 2587 records, 80 markers, 467243 pairs, 1233228 (pair, term) entries

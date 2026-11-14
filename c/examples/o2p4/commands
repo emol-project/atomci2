@@ -1,0 +1,8 @@
+# O 1s2 2s2 2p4 (3P, 1D, 1S) on HF orbitals of 3P
+# output     tool, CFPTBL ("-": generated in C), orbitals, configurations, levels per J, options
+ls.out       acatsp - O.w cfg 9 ls
+so1.out      acatsp - O.w cfg 9
+bp.out       acatsp - O.w cfg 9 so2 ss oo mvd rkrel
+g.out        acatsp - O.w cfg 9 so2 ss gc2e oz2e rec2 h6 zoff
+hfs_is.out   acatsp - O.w cfg 9 hfs is
+trans.out    acatsp - O.w cfg 9 so2 ss trans

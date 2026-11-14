@@ -1,0 +1,5 @@
+# Cu 3d10 4s 2S and 3d9 4s2 2D on HF orbitals of 2S
+# output     command (run in this directory, stdout to the output file)
+bp.out       acatsp - Cu.w cfg 4 so2 ss oo mvd rkrel
+trans.out    acatsp - Cu.w cfg 4 so2 ss trans
+hfs.out      acatsp - Cu.w cfg 4 so2 ss hfs is

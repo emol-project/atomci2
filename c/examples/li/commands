@@ -1,0 +1,7 @@
+# Li 1s2 2s 2S and 1s2 2p 2P, each on its own HF orbitals
+# output     command (run in this directory, stdout to the output file)
+hfs_2s.out   acatsp - Li2s.w cfg2s 4 hfs is
+hfs_2p.out   acatsp - Li2p.w cfg2p 4 so2 ss hfs is
+fs_2p.out    acatsp - Li2p.w cfg2p 4 so2 ss oo mvd rkrel gc2e oz2e rec2 h6
+trans_2p.out acatsp - Li2p.w cfg2p 4 so2 ss trans m1r2e
+e1_bio.out   acatsp - Li2s.w cfg2s 4 orth trans bio=Li2p.w,cfg2p

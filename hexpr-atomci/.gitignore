@@ -1,0 +1,6 @@
+build/
+tests/ref/make_ref_hij
+__pycache__/
+*.o
+*.a
+*.so

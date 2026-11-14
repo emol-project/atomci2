@@ -1,0 +1,9 @@
+# F 1s2 2s2 2p5 2P on the MCSCF orbitals of the Fortran run (prep.sh)
+# configs: "seq*occ" with the sequence numbers of the tape's orbital list
+# (nfte_dump fort.15, line NWTN: 33 = 2s, 34 = 2p; 1s, closed, is added)
+# output     command (run in the work directory, stdout to the output file)
+tape.out     nfte_dump fort.15
+fs.out       acfs - fort.15 fort.16 fort.18 fort.21 configs 2
+bp.out       acfs - fort.15 fort.16 fort.18 fort.21 configs 2 so2 ss oo mvd contact
+g.out        acfs - fort.15 fort.16 fort.18 fort.21 configs 2 so2 ss gc2e oz2e rec2 h6 zoff
+props.out    acfs - fort.15 fort.16 fort.18 fort.21 configs 2 hfs is trans

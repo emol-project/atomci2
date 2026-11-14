@@ -1,0 +1,18 @@
+acatsp: li532.w, Z = 3, 9 orbitals, 88 configurations, 644 CSFs, 1/alpha = 137.035999084, H_SO1 off, H_SO2 off, H_SS off, mass velocity + Darwin off
+orbital 1s  l=0  <h> -4.162274662389  <r^-3> 0.0000000000  zeta 0.000000000000e+00 hartree = 0.000000 cm-1  MV -3.5915100293e-03  D 2.6896258674e-03
+orbital 2s  l=0  <h> -1.124977833590  <r^-3> 0.0000000000  zeta 0.000000000000e+00 hartree = 0.000000 cm-1  MV -4.4312908404e-04  D 2.7260264037e-04
+orbital 3s  l=0  <h> -0.499827358410  <r^-3> 0.0000000000  zeta 0.000000000000e+00 hartree = 0.000000 cm-1  MV -1.3491557197e-04  D 7.7096075446e-05
+orbital 4s  l=0  <h> -0.161126848739  <r^-3> 0.0000000000  zeta 0.000000000000e+00 hartree = 0.000000 cm-1  MV -4.6095354376e-04  D 2.4984163441e-04
+orbital 2p  l=1  <h> -1.113256789317  <r^-3> 1.2782638509  zeta 1.021039222399e-04 hartree = 22.409221 cm-1  MV -9.4641586996e-05  D 0.0000000000e+00
+orbital 3p  l=1  <h> 0.278377525692  <r^-3> 1.8835645498  zeta 1.504535454062e-04 hartree = 33.020736 cm-1  MV -4.2258700567e-04  D 0.0000000000e+00
+orbital 4p  l=1  <h> 6.459879308892  <r^-3> 33.2965049344  zeta 2.659625982834e-03 hartree = 583.720432 cm-1  MV -8.3753314577e-03  D 0.0000000000e+00
+orbital 3d  l=2  <h> -0.157291338872  <r^-3> 0.2507696523  zeta 2.003073548446e-05 hartree = 4.396238 cm-1  MV -1.0523987904e-04  D 0.0000000000e+00
+orbital 4d  l=2  <h> 3.193005639139  <r^-3> 2.7254208247  zeta 2.176985258266e-04 hartree = 47.779304 cm-1  MV -1.8411687267e-03  D 0.0000000000e+00
+hfsrel 2S: 92 CSFs, 66 configurations, 5092 H elements (Davidson 14, CG 15)
+hfsrel 2S: E -6.7518348822  A^(4) 10.87538693  <H^A> -23.76142354  checks <X'>/A4-1 -7.33e-12  (<H'^A>-<H^A>)/A4 +8.36e-11
+hfsrel 2S: K -3.31920025  sep +7.98448379  N2e -0.01597667  Breit -0.58532213  prod -16.46195657  anom +9.00000000  s2 +0.90343435  A_AN/A4 -2.49453748
+hfsrel 2S: <sum delta(r_ab)> 0.907850  d(A_AN/A4)/d<sum delta> (product term) 0.978036
+hfsrel 4S: 26 CSFs, 26 configurations, 524 H elements (Davidson 9, CG 10)
+hfsrel 4S: E -4.8392610739  A^(4) 284.83187834  <H^A> -18.72144291  checks <X'>/A4-1 -7.03e-12  (<H'^A>-<H^A>)/A4 +2.04e-12
+hfsrel 4S: K -3.30015142  sep +1.46671577  N2e -0.00209647  Breit +0.00052771  prod -8.23115946  anom +9.00000000  s2 +2.24704237  A_AN/A4 1.18087851
+hfsrel 4S: <sum delta(r_ab)> 0.000000  d(A_AN/A4)/d<sum delta> (product term) 0.358518

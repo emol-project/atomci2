@@ -1,0 +1,5 @@
+# He 1s2p 3P, 1P on HF orbitals of 3P
+# output     command (run in this directory, stdout to the output file)
+so1.out      acatsp - He.w cfg 4
+bp.out       acatsp - He.w cfg 4 so2 ss oo mvd rkrel
+g.out        acatsp - He.w cfg 4 so2 ss gc2e oz2e rec2 h6 zoff

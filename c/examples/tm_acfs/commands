@@ -1,0 +1,11 @@
+# Sc, Ti, Cu on the MCSCF orbitals of the Fortran runs (prep.sh, samples/native)
+# *.cfg: "seq*occ" with the sequence numbers of the tape's orbital list
+# (tape.out, line NWTN: 14 = 4s, 15 = 3d; the closed 1s 2s 2p 3s 3p are added)
+# output     command (run in the work directory, stdout to the output file)
+tape.out     nfte_dump sc/fort.15
+sc_bp.out    acfs - sc/fort.15 sc/fort.16 sc/fort.18 sc/fort.21 sc.cfg 2 so2 ss oo mvd contact
+sc_props.out acfs - sc/fort.15 sc/fort.16 sc/fort.18 sc/fort.21 sc.cfg 2 so2 ss gc2e oz2e zoff hfs is trans
+ti_bp.out    acfs - ti/fort.15 ti/fort.16 ti/fort.18 ti/fort.21 ti.cfg 4 so2 ss oo mvd contact
+ti_props.out acfs - ti/fort.15 ti/fort.16 ti/fort.18 ti/fort.21 ti.cfg 4 so2 ss gc2e oz2e zoff hfs
+cu_bp.out    acfs - cu/fort.15 cu/fort.16 cu/fort.18 cu/fort.21 cu.cfg 2 so2 ss oo mvd contact
+cu_trans.out acfs - cu/fort.15 cu/fort.16 cu/fort.18 cu/fort.21 cu.cfg 2 so2 ss trans hfs

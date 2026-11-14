@@ -1,0 +1,60 @@
+OPEN UNIT=10 FILE=./CFPTBL BINARY STATUS=OLD
+OPEN UNIT=27 FILE=be.NO BINARY STATUS=OLD
+OPEN UNIT=3 FILE=cr.bas STATUS=OLD
+OPEN UNIT=2 FILE=be.csf STATUS=UNKNOWN
+OPEN UNIT=44 FILE=mcp.dat STATUS=UNKNOWN
+END
+ &cntl
+nrnfg=1,0,1,1,0,1,1,1,
+title=' vcm_d3_2Ge_cr15n3 ',
+ /
+ &ai
+z=24,
+iunit=3,
+ntype=2,
+idprnt=0,
+ /
+ &wf
+lrps=4000000,
+ispin=2,
+iorb=9,
+ipar=0,
+itnel=21,
+iunit=2,
+rule=0,
+npflg=0,
+ /
+ &tr
+nfaii=18,
+itvci=1,
+nsym=6,
+nob=10,8,6,4,3,2,
+nbf=10,8,6,4,3,2,
+mpob=10,9,8,7,6,5,4,3,1,2,8,7,6,5,4,3,2,1,6,5,4,3,2,1,4,3,2,1,3,2,1,2,1,
+ /
+ &get
+nind=6,
+ivcs=27,
+ind=2,0,1,10,
+2,1,1,8,
+2,2,1,6,
+2,3,1,4,
+2,4,1,3,
+2,5,1,2,
+ /
+ &ex
+retry=0,
+ /
+ &ci
+nrnfg=1,1,1,0,1,1,
+ips=10,
+maxit=400,
+nsdim=14,
+nstate=1,
+ioflg=0,-1,-1,0,0,
+ /
+ &rs
+pthr=-0.001,
+rule=2,
+ /
+

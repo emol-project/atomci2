@@ -1,0 +1,13 @@
+acatsp: Li2s.w, Z = 3, 2 orbitals, 1 configurations, 1 CSFs, 1/alpha = 137.035999084, H_SO1 on, H_SO2 off, H_SS off, mass velocity + Darwin off
+orbital 1s  l=0  <h> -4.443145174189  <r^-3> 0.0000000000  zeta 0.000000000000e+00 hartree = 0.000000 cm-1  MV -2.0418826921e-03  D 1.7124528959e-03
+orbital 2s  l=0  <h> -0.827357699648  <r^-3> 0.0000000000  zeta 0.000000000000e+00 hartree = 0.000000 cm-1  MV -5.7905601709e-05  D 4.1800283720e-05
+   J   #            E (hartree) term   weight              g_J         dg_RMC          dg_GC        dg_ORMC
+ 1/2   1     -7.432726930884626 2S     1.0000  2.0023193043626  -2.223936e-05   1.839253e-05   0.000000e+00
+Hyperfine reduced matrix elements <A||T^(K)||B> (Edmonds, a.u.; T^(1) = orb + sd + con, T^(2) = quad); A_J per mu_I/I and B_J per Q:
+ J_A  #A  J_B  #B              orb               sd              con            T^(1)             quad       A_J(MHz)     B_J(MHz/b)
+ 1/2   1  1/2   1  0.000000000e+00  0.000000000e+00  1.711098505e+00  1.711098505e+00  0.000000000e+00     133.298631      -0.000000
+Isotope shift (a.u.): K_NMS = <sum p_i^2/2>, K_SMS = <sum_{i<j} p_i.p_j>, mass shift (m/M)(K_NMS + K_SMS); rho(0) = <sum delta(r_i)>, field shift (2 pi/3) Z rho(0) delta<r^2>:
+   J   #                  K_NMS                  K_SMS          K_NMS + K_SMS                 rho(0)
+ 1/2   1      7.432726922617985      0.000000000000000      7.432726922617985        13.814820001747
+levels relative to the lowest (cm-1):
+  J =  1/2          0.000000

@@ -1,0 +1,6 @@
+# Sc 3d 4s2 2D on its HF orbitals
+# output     command (run in this directory, stdout to the output file)
+bp.out       acatsp - Sc.w cfg 4 so2 ss oo mvd rkrel
+g.out        acatsp - Sc.w cfg 4 so2 ss gc2e oz2e rec2 h6 zoff
+hfs.out      acatsp - Sc.w cfg 4 so2 ss hfs is
+trans.out    acatsp - Sc.w cfg 4 so2 ss trans

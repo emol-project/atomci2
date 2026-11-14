@@ -1,0 +1,8 @@
+# Ti 3d2 4s2 (3F, 3P, 1D, 1G, 1S) on HF orbitals of 3F; cfg3 adds 3d3 4s and 3d4
+# output     command (run in this directory, stdout to the output file)
+ls1.out      acatsp - Ti.w cfg1 9 ls
+bp1.out      acatsp - Ti.w cfg1 9 so2 ss oo mvd rkrel
+g1.out       acatsp - Ti.w cfg1 9 so2 ss gc2e oz2e zoff
+hfs1.out     acatsp - Ti.w cfg1 9 so2 ss hfs
+ls3.out      acatsp - Ti.w cfg3 9 ls
+fs3.out      acatsp - Ti.w cfg3 6 so2 ss

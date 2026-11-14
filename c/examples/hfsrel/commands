@@ -1,0 +1,4 @@
+# Li 1s2 2s 2S: alpha^2 hfs correction A_AN/A^(4) (Puchalski and Pachucki) on a
+# small complete CI (MCHF orbitals to n = 3, li532.cfg), as in tests/s2m11
+# output     command (run in this directory, stdout to the output file)
+hfsrel.out   acatsp - li532.w li532.cfg 1 noso hfsrel

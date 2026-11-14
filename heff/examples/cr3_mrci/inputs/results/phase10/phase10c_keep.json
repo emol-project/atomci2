@@ -1,0 +1,6 @@
+{
+ "threshold": 0.001,
+ "kept_per_l": {"s": 1, "p": 1, "d": 2, "f": 1, "g": 1, "h": 0},
+ "keep": ["12s", "11p", "11d", "12d", "11f", "11g"],
+ "note": "virtual NOs of runs/vq_cno (scripts/phase10c_nos.py) with averaged C3a occupation >= 1e-3; 3s 3p 3d 4s fixed"
+}

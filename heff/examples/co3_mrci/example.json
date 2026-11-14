@@ -1,0 +1,3 @@
+{"ion": "cond", "N": 6, "orbitals": "cond6", "space": "k1f1h1", "tag": "ex_co_mrci", "solver": "iter", "sparse_above": 500, "zeta_ion": "co",
+ "rule": {"virt": {"f": 1}, "maxh": 1, "maxv": 2},
+ "note": "Co3+ d6, the same rule and virtual set as cr3_mrci (16s 15p 14d 11f 11g, at most one 3s3p hole)"}

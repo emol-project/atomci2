@@ -1,0 +1,99 @@
+cff-version: 1.2.0
+message: >-
+  Any publication based upon results obtained with ATOMCI2 must include the
+  attribution "This work is based, in part, on results from the ATOMCI
+  package." and refer to the two works on ATOMCI listed under references
+  (LEGENDS.txt, Section 4). Results of the C tools should also cite the
+  ATOMCI2 technical note.
+title: "ATOMCI2: ATOMCI with C tools for spin-dependent atomic structure (Breit-Pauli terms and properties)"
+version: 1.0.0
+type: software
+authors:
+  - family-names: Sasaki
+    given-names: Fukashi
+  - family-names: Sekiya
+    given-names: Masahiro
+  - family-names: Noro
+    given-names: Takeshi
+  - family-names: Ohtsuki
+    given-names: Kazumasa
+  - family-names: Osanai
+    given-names: You
+  - family-names: Miura
+    given-names: Nobuaki
+  - family-names: Honda
+    given-names: Hiroaki
+repository-code: "https://github.com/emol-project/atomci2"
+license-url: "https://github.com/emol-project/atomci2/blob/main/LEGENDS.txt"
+abstract: >-
+  ATOMCI2 is the ATOMCI package with C tools for spin-dependent atomic
+  structure. The Fortran program ATOMCI computes non-relativistic
+  configuration interaction wave functions and energies of many-electron
+  atoms in LS coupling. The C tools acatsp and acfs add an
+  intermediate-coupling CI with the Breit-Pauli terms and the properties
+  g_J, hyperfine A and B, transition rates E1 to M3 and isotope-shift
+  parameters; the library hexpr-atomci is their angular engine. The
+  Python code in heff/ builds effective Hamiltonians of 3d^N ions from
+  ATOMCI CI matrices and projects them onto the operators of the
+  parametric theory. Non-commercial research and educational use only.
+keywords:
+  - configuration interaction
+  - atomic structure
+  - LS coupling
+  - tensor operators
+  - coefficients of fractional parentage
+  - MCSCF
+  - Breit-Pauli
+  - spin-orbit
+  - Lande g factor
+  - hyperfine structure
+  - transition probabilities
+  - isotope shift
+  - effective Hamiltonian
+  - three-body operators
+  - transition-metal ions
+references:
+  - type: article
+    authors:
+      - family-names: Sasaki
+        given-names: Fukashi
+    title: Matrix Elements in Configuration Interaction Calculations
+    journal: International Journal of Quantum Chemistry
+    volume: 8
+    start: 605
+    year: 1974
+  - type: generic
+    authors:
+      - family-names: Sasaki
+        given-names: Fukashi
+      - family-names: Sekiya
+        given-names: Masahiro
+      - family-names: Noro
+        given-names: Takeshi
+      - family-names: Ohtsuki
+        given-names: Kazumasa
+      - family-names: Osanai
+        given-names: You
+    title: "Non-Relativistic Configuration Interaction Calculations for Many-Electron Atoms: ATOMCI"
+    collection-title: "Methods and Techniques in Computational Chemistry: METECC-94"
+    editors:
+      - family-names: Clementi
+        given-names: E.
+    start: 163
+    end: 219
+    year: 1993
+  - type: software
+    authors:
+      - family-names: Sasaki
+        given-names: Fukashi
+      - family-names: Sekiya
+        given-names: Masahiro
+      - family-names: Noro
+        given-names: Takeshi
+      - family-names: Ohtsuki
+        given-names: Kazumasa
+      - family-names: Osanai
+        given-names: You
+    title: "ATOMCI: a non-relativistic configuration interaction program for many-electron atoms"
+    doi: 10.5281/zenodo.24045823
+    repository-code: "https://github.com/emol-project/atomci"

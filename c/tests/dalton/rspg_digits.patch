@@ -1,0 +1,17 @@
+diff --git a/DALTON/rsp/rspg.F b/DALTON/rsp/rspg.F
+index d70a7fb61..41066a75b 100644
+--- a/DALTON/rsp/rspg.F
++++ b/DALTON/rsp/rspg.F
+@@ -1106,6 +1106,12 @@ C
+             CALL HEADER('Two-electron gauge correction ',3)
+             WRITE(LUPRI,'(3F10.0)')((PPM*GC2(I,J),J=1,3),I=1,3)
+          END IF
++C
++         IF (DORMC.AND.DOGC1.AND.DOGC2) THEN
++            WRITE(LUPRI,'(A,1P,3E22.13)') ' @GDIGITS RMC GC1 GC2',
++     &      GRELMC, (GC1(1,1)+GC1(2,2)+GC1(3,3))/3,
++     &      (GC2(1,1)+GC2(2,2)+GC2(3,3))/3
++         END IF
+ C
+          IF (ADDSO) THEN
+             CALL HEADER('Spin-orbit+orbital-Zeeman contribution',3)

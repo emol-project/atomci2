@@ -1,0 +1,3 @@
+{"ion": "crnd", "N": 3, "orbitals": "crnd3", "space": "k1f1h1", "tag": "ex_mrci", "solver": "iter", "sparse_above": 500,
+ "rule": {"virt": {"f": 1}, "maxh": 1, "maxv": 2},
+ "note": "phase15s.ras_cfgs_x (the RAS rule of the production spaces) on the k = 1 virtual set of phase15t._virt(f=1): 16s 15p 14d 11f 11g, at most one 3s3p hole"}

@@ -1,0 +1,7 @@
+# Cr3+ fixture (work-tree layout; files of the development code): the exact H_eff of the fam space
+# (phase17q13 dump, set 'X-' = the whole space) and the stored decomposition it must reproduce.
+results/phase17/heff_dump/q13_crnd_fam.npz
+results/phase15/phase15k_17_crnd_fam_d5f2g2h1.json
+results/phase15/phase15c.json
+results/phase10/phase10c_keep.json
+results/phase9/threebody_basis.json

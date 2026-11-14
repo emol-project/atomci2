@@ -1,0 +1,26 @@
+{
+ "source": "development version of this code with the ATOMCI used for the production spaces (sha256 6d6ed833); the packaged code with the ATOMCI built from this repository gives the same values bit for bit",
+ "units": "T1..T4 mEh (Tr O^2 = 1 in d3); B, C, alpha, beta cm-1; f1..f12 cm-1 as stored (Judd-Leavitt Table 7 matrices; normalized as f * sqrt(A(f)), Tr f^2 = 1 in d4, listed under values_f_normalized)",
+ "tol_mEh": 1e-06,
+ "tol_cm": 0.0001,
+ "dims": {
+  "2P": 3,
+  "4P": 3,
+  "2D": 5,
+  "2F": 4,
+  "4F": 3,
+  "2G": 4,
+  "2H": 2
+ },
+ "values": {
+  "T1": 17.08300127833216,
+  "T2": 0.09760395169328064,
+  "T3": -0.21035067333913407,
+  "T4": 0.16969762913288775,
+  "B": 1125.7533634347867,
+  "C": 4119.525149197124,
+  "alpha": 68.24522811563772,
+  "beta": 718.7533688426138
+ },
+ "tol_heff_Eh": 1e-09
+}
