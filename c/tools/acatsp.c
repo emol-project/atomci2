@@ -17,9 +17,24 @@
  *             cusp), orthogonalized to the .w orbitals of that l and
  *             diagonalized on the bare hydrogen-like h; labels continue
  *             the n of the .w (the large s sets of hfsrel)
- * occslots    (configuration lists) only the occupied orbitals of a
- *             configuration are slots of its CSFs (ac_ci_from_orbitals_occ):
- *             the same CSFs, fewer slots for the engine
+ * lagfock[=N] (with lag=, configuration lists) diagonalize the added
+ *             orbitals on a screened operator in place of the bare h: h plus
+ *             the direct and shell-averaged exchange potential of the first
+ *             configuration of the list with N electrons (default 1) taken
+ *             from its last shells. The added orbitals span the same space;
+ *             the levels are the same to rounding when the list holds every
+ *             distribution of its electrons over the added orbitals of each
+ *             l (all of them used), and differ when only some are used. The
+ *             Davidson iteration then needs several times fewer steps (Ti,
+ *             12000 to 80000 CSFs: 5 to 8 times fewer products H x)
+ * allslots    (configuration lists) every orbital of the file is a slot of
+ *             every CSF, empty shells included (ac_ci_from_orbitals). The
+ *             default takes only the occupied orbitals of a configuration as
+ *             the slots of its CSFs (ac_ci_from_orbitals_occ): the same CSFs
+ *             and the same results to rounding, and the engine's work no
+ *             longer grows with the number of empty orbitals (about 6 times
+ *             faster with 22 orbitals). occslots, the earlier name of the
+ *             default, is still accepted
  * hfsrel      for the lowest root of every (S, L = 0) block, the regularized
  *             alpha^2 hfs correction A_AN/A^(4) of Puchalski and Pachucki
  *             (arXiv:1310.2161v2, Eq. (29); ac_hfsrel;
@@ -115,6 +130,7 @@
 #include "ac_lsj.h"
 #include "ac_radial.h"
 #include "ac_tabrad.h"
+#include "ac_wigner.h"
 
 #include <ctype.h>
 #include <errno.h>
@@ -134,6 +150,14 @@ static void lap(const char *what)
     if (getenv("AC_TIME") && t0 >= 0.0)
         fprintf(stderr, "%s: %.2f s\n", what, t - t0);
     t0 = t;
+}
+/* AC_TIME: the wall time since t0, with a label, to stderr; returns the time now */
+static double since(const char *what, double t0)
+{
+    double t = omp_get_wtime();
+    if (getenv("AC_TIME"))
+        fprintf(stderr, "%s: %.2f s\n", what, t - t0);
+    return t;
 }
 #define MAXK 13
 
@@ -964,6 +988,39 @@ static int write_atsp_c(const ac_ci *ci, const ac_atspw *w, const int *slot_w,
     return 0;
 }
 
+/* CSFs i and j have the same orbitals with the same occupations */
+static int ls_same_config(const ac_ci *ci, int i, int j)
+{
+    const ac_ci_csf *F = &ci->csf[i], *G = &ci->csf[j];
+    if (F->c.nsh != G->c.nsh)
+        return 0;
+    for (int s = 1; s <= F->c.nsh; s++)
+        if (F->seq[s] != G->seq[s] || F->c.nel[s] != G->c.nel[s])
+            return 0;
+    return 1;
+}
+
+/* the number of electrons CSF j must move to become CSF i */
+static int ls_moved(const ac_ci *ci, int i, int j)
+{
+    const ac_ci_csf *F = &ci->csf[i], *G = &ci->csf[j];
+    int p = 1, q = 1, nm = 0;
+    while (p <= F->c.nsh || q <= G->c.nsh) {
+        int sf = p <= F->c.nsh ? F->seq[p] : 1 << 30;
+        int sg = q <= G->c.nsh ? G->seq[q] : 1 << 30;
+        int d = 0;
+        if (sf == sg)
+            d = F->c.nel[p++] - G->c.nel[q++];
+        else if (sf < sg)
+            d = F->c.nel[p++];
+        else
+            q++;
+        if (d > 0)
+            nm += d;
+    }
+    return nm;
+}
+
 /* eigenvalues of every (S, L) block */
 static int print_ls(ac_ci *ci, int nroots)
 {
@@ -980,18 +1037,95 @@ static int print_ls(ac_ci *ci, int nroots)
                 idx[m++] = b, done[b] = 1;
         }
         double *H = calloc((size_t)m * m, sizeof *H), *ev = malloc((size_t)m * sizeof *ev);
-        for (int j = 0; j < m; j++)
-            for (int i = j; i < m; i++) {
-                int e;
-                H[(size_t)j * m + i] = ac_ci_hij(ci, idx[i], idx[j], &e);
-                if (e) {
-                    fprintf(stderr, "acatsp: engine error %d\n", e);
-                    return -1;
+        double t0 = omp_get_wtime();
+        /* columns in parallel on copies of ci, as the rows of ac_lsj_prepare:
+           each element is computed by one thread exactly as in a serial run */
+        int fe = 0;
+        long ops = 0;
+        /* The CSFs of the term that belong to one configuration are
+           neighbours in idx: seg[s] .. seg[s+1]-1 (at most AC_BP_BLOCK of
+           them). The elements of a pair of such segments are computed
+           together (ac_ci_hij_list: the same values); AC_BP_PAIRWISE in the
+           environment computes them one by one, as before. */
+        const char *sb = getenv("AC_BP_BLOCK");
+        int maxrun = sb && atoi(sb) > 0 ? atoi(sb) : 512, nseg = 0;
+        int *seg = getenv("AC_BP_PAIRWISE") ? NULL : malloc(((size_t)m + 1) * sizeof *seg);
+        int *sp = NULL;
+        long nsp = 0;
+        if (seg) {
+            for (int q = 0; q < m; q++)
+                if (q == 0 || !ls_same_config(ci, idx[q - 1], idx[q]) || q - seg[nseg - 1] >= maxrun)
+                    seg[nseg++] = q;
+            seg[nseg] = m;
+            sp = malloc(((size_t)nseg * ((size_t)nseg + 1) + 1) * sizeof *sp);
+            for (int a2 = 0; a2 < nseg && sp; a2++)
+                for (int b2 = 0; b2 <= a2; b2++)
+                    if (ls_moved(ci, idx[seg[a2]], idx[seg[b2]]) <= 2)
+                        sp[2 * nsp] = a2, sp[2 * nsp + 1] = b2, nsp++;
+        }
+#pragma omp parallel reduction(+ : ops)
+        {
+            ac_ci loc = *ci;
+            loc.thc = NULL;
+            loc.ops_evaluated = 0;
+            if (sp) {
+                double *buf = NULL;
+                size_t bufn = 0;
+#pragma omp for schedule(dynamic, 1)
+                for (long g = 0; g < nsp; g++) {
+                    int a2 = sp[2 * g], b2 = sp[2 * g + 1], e = 0;
+                    int nf = seg[a2 + 1] - seg[a2], ng = seg[b2 + 1] - seg[b2];
+                    if ((size_t)nf * (size_t)ng > bufn) {
+                        free(buf);
+                        bufn = (size_t)nf * (size_t)ng;
+                        buf = malloc(bufn * sizeof *buf);
+                    }
+                    if (!buf)
+                        e = 1;
+                    else
+                        ac_ci_hij_list(&loc, nf, idx + seg[a2], ng, idx + seg[b2], buf, &e);
+                    if (e) {
+#pragma omp critical(acatsp_ls_fail)
+                        fe = e;
+                        continue;
+                    }
+                    for (int i = seg[a2]; i < seg[a2 + 1]; i++)
+                        for (int j = seg[b2]; j < seg[b2 + 1] && j <= i; j++)
+                            H[(size_t)j * m + i] =
+                                buf[(size_t)(i - seg[a2]) * (size_t)ng + (size_t)(j - seg[b2])];
                 }
+                free(buf);
+            } else {
+#pragma omp for schedule(dynamic, 1)
+                for (int j = 0; j < m; j++)
+                    for (int i = j; i < m; i++) {
+                        int e;
+                        H[(size_t)j * m + i] = ac_ci_hij(&loc, idx[i], idx[j], &e);
+                        if (e) {
+#pragma omp critical(acatsp_ls_fail)
+                            fe = e;
+                            break;
+                        }
+                    }
             }
+            ops += loc.ops_evaluated;
+            ac_ci_free_cache(&loc);
+        }
+        free(seg);
+        free(sp);
+        ci->ops_evaluated += ops;
+        if (fe) {
+            fprintf(stderr, "acatsp: engine error %d\n", fe);
+            return -1;
+        }
+        double t1 = omp_get_wtime();
         if (ac_ci_eigvals(m, H, ev))
             return -1;
-        printf("term %d%c %d", T.ts + 1, "SPDFGHIKLMNOQ"[T.tl / 2], m);
+        if (getenv("AC_TIME"))
+            fprintf(stderr, "term %d%c, dim %d: matrix %.2f s, eigenvalues %.2f s\n", T.ts + 1,
+                    T.tl / 2 < 21 ? "SPDFGHIKLMNOQRTUVWXYZ"[T.tl / 2] : '?', m, t1 - t0,
+                    omp_get_wtime() - t1);
+        printf("term %d%c %d", T.ts + 1, T.tl / 2 < 21 ? "SPDFGHIKLMNOQRTUVWXYZ"[T.tl / 2] : '?', m);
         for (int r = 0; r < nroots && r < m; r++)
             printf(" %.12f", ev[r]);
         printf("\n");
@@ -1167,6 +1301,126 @@ static double gdot(const ac_rgrid *g, const double *u, const double *v)
    interpolation errors. */
 static int lagfit;
 
+/* lagfock[=N]: the added functions are diagonalized on a screened
+   one-electron operator in place of the bare h: h plus the direct and the
+   shell-averaged exchange potential (Slater (1960), average of configuration)
+   of the first configuration of the list with N electrons taken from its
+   last shells (default 1). The span is the same; a CSF space that holds
+   every distribution of its electrons over the added orbitals of each l
+   gives the same levels. The CI matrix is then much nearer to diagonal, and
+   the Davidson iteration needs fewer steps. -1: off. */
+static int lagfock = -1;
+
+/* occ[s] = the occupation of w orbital s in the first configuration of the
+   list, with nrem electrons taken from its last shells */
+static int fock_occupation(const state_t *st, int nrem, int *occ, char *err, int errlen)
+{
+    const ac_atspw *w = &st->w;
+    if (st->csfmode) {
+        snprintf(err, (size_t)errlen, "lagfock needs a configuration list, not an ATSP .c list");
+        return -1;
+    }
+    FILE *cf = fopen(st->cpath, "r");
+    if (!cf) {
+        snprintf(err, (size_t)errlen, "%s: %s", st->cpath, strerror(errno));
+        return -1;
+    }
+    char line[1024];
+    int any = 0, order[MAXO], no = 0;
+    for (int s = 0; s < w->n; s++)
+        occ[s] = 0;
+    while (!any && fgets(line, sizeof line, cf)) {
+        char *hash = strchr(line, '#');
+        if (hash)
+            *hash = 0;
+        for (char *tok = strtok(line, " \t\n"); tok; tok = strtok(NULL, " \t\n")) {
+            char lab[8];
+            int n, s;
+            if (sscanf(tok, "%7[^(](%d)", lab, &n) != 2 || (s = w_index(w, lab)) < 0) {
+                snprintf(err, (size_t)errlen, "lagfock: %s of the first configuration is not in %s",
+                         tok, st->wpath);
+                fclose(cf);
+                return -1;
+            }
+            occ[s] = n;
+            order[no++] = s;
+            any = 1;
+        }
+    }
+    fclose(cf);
+    if (!any) {
+        snprintf(err, (size_t)errlen, "lagfock: no configuration in %s", st->cpath);
+        return -1;
+    }
+    for (int i = no - 1; i >= 0 && nrem > 0; i--)
+        while (occ[order[i]] > 0 && nrem > 0)
+            occ[order[i]]--, nrem--;
+    printf("lagfock: the added orbitals are diagonalized on h + the potential of");
+    for (int i = 0; i < no; i++)
+        if (occ[order[i]])
+            printf(" %s(%d)", w->el[order[i]], occ[order[i]]);
+    printf("\n");
+    return 0;
+}
+
+/* hp[i * m0 + j] += <i| V |j> for the m0 functions of proj (all of one l):
+   V = sum_c q_c (J_c - (1/2) sum_k (l k l_c; 0 0 0)^2 K_c^k) */
+static int fock_add(const state_t *st, const ac_radial *proj, int l, int m0, const int *occ,
+                    double *hp)
+{
+    const ac_rgrid *g = st->rad.g;
+    const ac_atspw *w = &st->w;
+    int n = g->n;
+    double *vd = calloc((size_t)n, sizeof *vd), *u = malloc((size_t)n * sizeof *u);
+    double *z = malloc((size_t)n * sizeof *z), *x = calloc((size_t)m0 * m0, sizeof *x);
+    if (!vd || !u || !z || !x) {
+        free(vd);
+        free(u);
+        free(z);
+        free(x);
+        return -1;
+    }
+    for (int s = 0; s < w->n; s++) {
+        if (!occ[s])
+            continue;
+        const double *rc = st->rad.val + (size_t)st->mo[s] * n;
+        int lc = w->l[s];
+        for (int p = 0; p < n; p++)
+            u[p] = rc[p] * rc[p];
+        ac_radial_kern(&st->rad, 0, 1, u, z);
+        for (int p = 0; p < n; p++)
+            vd[p] += occ[s] * z[p];
+        for (int k = abs(l - lc); k <= l + lc; k += 2) {
+            double f = ac_fabc(l, k, lc), c = -0.5 * occ[s] * f * f;
+            for (int j = 0; j < m0; j++) {
+                const double *pj = proj->val + (size_t)j * n;
+                for (int p = 0; p < n; p++)
+                    u[p] = rc[p] * pj[p];
+                ac_radial_kern(&st->rad, k, k + 1, u, z);
+                for (int p = 0; p < n; p++)
+                    z[p] *= rc[p];
+                for (int i = 0; i < m0; i++)
+                    x[(size_t)i * m0 + j] += c * gdot(g, proj->val + (size_t)i * n, z);
+            }
+        }
+    }
+    for (int j = 0; j < m0; j++) {
+        const double *pj = proj->val + (size_t)j * n;
+        for (int p = 0; p < n; p++)
+            u[p] = vd[p] * pj[p];
+        for (int i = 0; i < m0; i++)
+            x[(size_t)i * m0 + j] += gdot(g, proj->val + (size_t)i * n, u);
+    }
+    for (int i = 0; i < m0; i++)
+        for (int j = 0; j < m0; j++)
+            hp[(size_t)i * m0 + j] += 0.5 * (x[(size_t)i * m0 + j] + x[(size_t)j * m0 + i]);
+    free(vd);
+    free(u);
+    free(z);
+    free(x);
+    return 0;
+}
+
 /* the coefficient vectors of the cusp subspace in the raw functions:
    column j of C (nb x m0), e_k - (f_k/f_piv) e_piv for s, e_k otherwise */
 static double *cusp_basis(int l, int nb, const double *f, int piv, int *m0)
@@ -1322,6 +1576,11 @@ static int add_laguerre(state_t *st, const char *spec, char *err, int errlen)
     snprintf(buf, sizeof buf, "%s", spec);
     ac_radial fin[AC_BASIS_MAXL];
     int have[AC_BASIS_MAXL] = {0};
+    /* lagfock: the occupations of the screening potential (the .w orbitals;
+       read before strtok below is in use) */
+    int focc[MAXO] = {0};
+    if (lagfock >= 0 && fock_occupation(st, lagfock, focc, err, errlen))
+        return -1;
     for (char *tok = strtok(buf, ","); tok; tok = strtok(NULL, ",")) {
         int l, nb;
         double b;
@@ -1410,6 +1669,10 @@ static int add_laguerre(state_t *st, const char *spec, char *err, int errlen)
         for (int i = 0; i < m0; i++)
             for (int j = 0; j < m0; j++)
                 hp[(size_t)i * m0 + j] = ac_radial_h(&proj, i, j);
+        if (lagfock >= 0 && fock_add(st, &proj, l, m0, focc, hp)) {
+            snprintf(err, (size_t)errlen, "out of memory");
+            return -1;
+        }
         for (int a = 0; a < m1; a++)
             for (int c = 0; c < m1; c++) {
                 double s = 0.0;
@@ -1508,9 +1771,9 @@ static int add_laguerre(state_t *st, const char *spec, char *err, int errlen)
     return 0;
 }
 
-/* occslots: a CSF has only the occupied orbitals of its configuration as
-   slots (ac_ci_from_orbitals_occ) */
-static int occslots;
+/* a CSF has only the occupied orbitals of its configuration as slots
+   (ac_ci_from_orbitals_occ); allslots: every orbital (ac_ci_from_orbitals) */
+static int occslots = 1;
 
 /* the CSFs: a configuration list (every CSF of each configuration, slots
    in the order of w) or an ATSP .c list */
@@ -1703,6 +1966,7 @@ static int run_state(state_t *st, const opts_t *o, ac_lsj_kept **keep, int *nkee
     if (o->ss)
         ci->in.rss = get_rss;
     const ac_atspw *w = &st->w;
+    double ttab = omp_get_wtime();
     printf("acatsp: %s, Z = %g, %d orbitals, %d configurations, %d CSFs, 1/alpha = %.9f,"
            " H_SO1 %s, H_SO2 %s, H_SS %s, mass velocity + Darwin %s\n",
            st->wpath, w->z, w->n, st->ncfg, ci->ncsf, 1.0 / ac_alpha, o->noso ? "off" : "on",
@@ -1718,6 +1982,7 @@ static int run_state(state_t *st, const opts_t *o, ac_lsj_kept **keep, int *nkee
                w->l[s] ? ac_radial_zeta(rad, i, i) * AC_HARTREE_CM : 0.0,
                ac_radial_mv(rad, i, i), ac_radial_darwin(rad, i, i));
     }
+    since("orbital table", ttab);
     if (o->ls)
         return print_ls(ci, o->nlev) ? (snprintf(err, (size_t)errlen, "ls failed"), -1) : 0;
     if (o->hfsrel) {
@@ -2056,8 +2321,14 @@ int main(int argc, char **argv)
             lagthr = atof(argv[i] + 7);
         else if (!strcmp(argv[i], "lagfit"))
             lagfit = 1;
+        else if (!strcmp(argv[i], "lagfock"))
+            lagfock = 1;
+        else if (!strncmp(argv[i], "lagfock=", 8))
+            lagfock = atoi(argv[i] + 8);
         else if (!strcmp(argv[i], "occslots"))
             occslots = 1;
+        else if (!strcmp(argv[i], "allslots"))
+            occslots = 0;
         else if (!strncmp(argv[i], "writec=", 7))
             writec = argv[i] + 7;
         else if (!strncmp(argv[i], "bio=", 4))
@@ -2125,10 +2396,12 @@ int main(int argc, char **argv)
     }
     char err[256];
     ac_cfptab t;
+    double tset = omp_get_wtime();
     if (ac_cfp_load(&t, argv[1], err, sizeof err)) {
         fprintf(stderr, "acatsp: %s\n", err);
         return 1;
     }
+    tset = since("setup: CFP table", tset);
     static state_t s1, s2;
     s1.wpath = argv[2];
     s1.cpath = argv[3];
@@ -2172,6 +2445,7 @@ int main(int argc, char **argv)
         fprintf(stderr, "acatsp: %s\n", bio ? "lag does not go with bio" : err);
         return 1;
     }
+    tset = since("setup: orbitals", tset);
     const ac_atspw *w = &s1.w;
     const ac_radial *radp = &s1.rad;
     const int *mo = s1.mo;
@@ -2226,10 +2500,12 @@ int main(int argc, char **argv)
         printf("query %-20s %.10e\n", qs[iq], v);
     }
 
+    tset = omp_get_wtime();
     if (load_csfs(&s1, &t, err, sizeof err) || (bio && load_csfs(&s2, &t, err, sizeof err))) {
         fprintf(stderr, "acatsp: %s\n", err);
         return 1;
     }
+    since("setup: CSF list", tset);
     if (writec && !s1.csfmode) {
         int ident[MAXO];
         for (int s = 0; s < w->n; s++)

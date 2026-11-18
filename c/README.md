@@ -69,8 +69,8 @@ Tools (built by `make`):
 | `build/acci CFPTBL nfte nftri [nroots [cmp]]` | Stage-2 CI on a Fortran tape's CSFs. With `cmp`, also compares against the H of the tape's energy expression |
 | `build/acterms CFPTBL nfte nftri configs [nroots]` | Every LS term of a configuration list in one run |
 | `build/acrad nfaii nftrc nftri [h [rmax [dump]]]` | Radial integrals by quadrature, checked against NFTRI and analytic formulas (S2-M3) |
-| `build/acfs CFPTBL nfte nftri nfaii nftrc configs [nlev] [options]` | Fine structure on the Fortran's GTO orbitals (Coulomb + H_SO1 in LSJ; `so2`, `ss`, `oo`, `contact`, `mvd`) and the same properties as acatsp (`gc2e`, `oz2e`, `rec2`, `h6`, `zoff`, `hfs`, `trans`, `m1r2e`, `is`); the list is at the top of `tools/acfs.c` |
-| `build/acatsp CFPTBL atom.w configs|list.c [nlev] [options]` | The same LSJ CI on ATSP's numerical orbitals, on a configuration list or an ATSP CSF list. Hamiltonian: `noso`, `mvd`, `so2`, `ss`, `oo`, `rkrel` (contact terms = ATSP's relativistic R^k), `atspcompat` (what bpci omits), `alpha=INV`. Properties: `gc2e`, `oz2e`, `rec2`, `h6` (α² terms of g_J), `zoff`, `hfs`, `trans` (E1, M1, M1r, E2, M2, E3, M3; `m1r2e` the two-electron M1 terms), `is`, `hfsrel`. Two states: `bio=W2,C2` (with `biomode=`, `rot1=`, `rot2=`, `orth`). Others: `ls`, `writec=P`, `occslots`, `lag=`, `dav=N`, `digits`, `q=...`. The full list is at the top of `tools/acatsp.c` |
+| `build/acfs CFPTBL nfte nftri nfaii nftrc configs [nlev] [options]` | Fine structure on the Fortran's GTO orbitals (Coulomb + H_SO1 in LSJ; `so2`, `ss`, `oo`, `contact`, `mvd`) and the same properties as acatsp (`gc2e`, `oz2e`, `rec2`, `h6`, `zoff`, `hfs`, `trans`, `m1r2e`, `is`); `info`, `dump=PREFIX` (the CSFs and the eigenvectors as files for other programs), `dumpmat` and `proj` (the single terms as matrices, or between the LS levels), `nlevJ=`, `tol=`, `dav=`, `ls`, `nog`; the list is at the top of `tools/acfs.c` |
+| `build/acatsp CFPTBL atom.w configs|list.c [nlev] [options]` | The same LSJ CI on ATSP's numerical orbitals, on a configuration list or an ATSP CSF list. Hamiltonian: `noso`, `mvd`, `so2`, `ss`, `oo`, `rkrel` (contact terms = ATSP's relativistic R^k), `atspcompat` (what bpci omits), `alpha=INV`. Properties: `gc2e`, `oz2e`, `rec2`, `h6` (α² terms of g_J), `zoff`, `hfs`, `trans` (E1, M1, M1r, E2, M2, E3, M3; `m1r2e` the two-electron M1 terms), `is`, `hfsrel`. Two states: `bio=W2,C2` (with `biomode=`, `rot1=`, `rot2=`, `orth`). Others: `ls`, `writec=P`, `allslots`, `lag=`, `lagfock` (screened orbitals for `lag=`: fewer Davidson steps), `dav=N`, `digits`, `q=...`. The full list is at the top of `tools/acatsp.c` |
 | `build/cfpgen OUT` / `build/cfpgen -c CFPTBL` | Writes the CFP table generated in C as CFPTBL, or compares it with a CFPTBL |
 
 The input manual for acatsp and acfs (options, input files, how to read the
@@ -84,8 +84,16 @@ table is then generated in C (`ac_cfp_generate`) and no Fortran file is needed.
 
 Environment variables: `AC_TIME` (wall times of the phases to stderr),
 `AC_SEQ_CACHE_MB` (the engine's sequential-form cache per thread, default
+128), `AC_FC_LIMIT_MB` (the engine's kept shell factors per thread, default
 128), `AC_PROP_CACHE_MB` (the per-run tables of two-electron property
-elements, default 2048), `AC_TRANS_GS2` (g_s = 2 in the M1 and M2 lines, for
+elements, default 2048; when the tables of g_J do not fit, its two-electron
+parts are computed for all the J blocks in one pass without them, see
+`AC_G2_PASS` in docs/C_SPIN_MANUAL.md), `AC_BP_BLOCK` (the Coulomb, two-body spin-orbit
+and spin-spin elements and those of `gc2e` and `oz2e` are computed for the
+CSFs of two configurations together,
+at most this many CSFs of a configuration at a time, default 512),
+`AC_BP_PAIRWISE` (compute them pair by pair instead; the values are the
+same), `AC_TRANS_GS2` (g_s = 2 in the M1 and M2 lines, for
 comparisons with ATSP), `OMP_NUM_THREADS`.
 
 The checks (pass or fail), the report-only comparisons with other programs

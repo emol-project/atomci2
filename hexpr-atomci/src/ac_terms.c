@@ -248,6 +248,203 @@ done:
     return err;
 }
 
+/* ---- all the CSF pairs of two configurations at once (ac_terms.h) ------ */
+
+void ac_pair_block_free(ac_pair_block *pb)
+{
+    ac_csf_set_free(&pb->B);
+    ac_csf_set_free(&pb->K);
+    free(pb->bf);
+    free(pb->bg);
+    free(pb->mis);
+    free(pb->ok);
+    pb->bf = pb->bg = NULL;
+    pb->mis = NULL;
+    pb->ok = NULL;
+}
+
+int ac_pair_block_make(ac_pair_block *pb, const ac_cfptab *t, int ni, const ac_orb_csf *F, int nj,
+                       const ac_orb_csf *G, int upper)
+{
+    size_t nn = (size_t)ni * (size_t)nj;
+    memset(pb, 0, sizeof *pb);
+    pb->ni = ni;
+    pb->nj = nj;
+    pb->bf = malloc((size_t)(ni > 0 ? ni : 1) * sizeof *pb->bf);
+    pb->bg = malloc((size_t)(nj > 0 ? nj : 1) * sizeof *pb->bg);
+    pb->mis = malloc((nn ? nn : 1) * sizeof *pb->mis);
+    pb->ok = malloc(nn ? nn : 1);
+    if (!pb->bf || !pb->bg || !pb->mis || !pb->ok || ni < 1 || nj < 1)
+        goto bad;
+    ac_csf tmp;
+    int n = 0;
+    for (int i = 0; i < ni; i++) {
+        n = ac_pair_union(t, &F[i], &G[0], &pb->bf[i], &tmp, pb->seq);
+        if (n < 0)
+            goto bad;
+    }
+    for (int j = 0; j < nj; j++)
+        if (ac_pair_union(t, &F[0], &G[j], &tmp, &pb->bg[j], pb->seq) != n)
+            goto bad;
+    pb->n = n;
+    if (ac_csf_set_make(&pb->B, ni, pb->bf) || ac_csf_set_make(&pb->K, nj, pb->bg))
+        goto bad;
+    for (int s = 1; s <= n; s++) {
+        pb->delta[s] = pb->bf[0].nel[s] - pb->bg[0].nel[s];
+        pb->ndiff += abs(pb->delta[s]);
+    }
+    for (int i = 0; i < ni; i++)
+        for (int j = 0; j < nj; j++) {
+            const ac_csf *bf = &pb->bf[i], *bg = &pb->bg[j];
+            unsigned long long m = 0;
+            int mism = 0;
+            for (int s = 1; s <= n; s++)
+                if (bf->code[s] != bg->code[s] || bf->nel[s] != bg->nel[s]) {
+                    m |= 1ULL << s;
+                    mism++;
+                }
+            pb->mis[(size_t)i * nj + j] = m;
+            pb->ok[(size_t)i * nj + j] = pb->ndiff <= 4 && mism <= 4 && !(upper && j < i);
+        }
+    return 0;
+bad:
+    ac_pair_block_free(pb);
+    return 1;
+}
+
+int ac_pair_terms_block(const ac_cfptab *t, const ac_pair_block *pb, ac_term_skip skip,
+                        ac_term_emit_block emit, void *ctx, long *nops)
+{
+    int ni = pb->ni, nj = pb->nj, n = pb->n, err = 0;
+    size_t nn = (size_t)ni * (size_t)nj;
+    const ac_csf *bf = &pb->bf[0], *bg = &pb->bg[0];
+    const int *seq = pb->seq, *delta = pb->delta;
+    long ops = 0, nsel = 0;
+    unsigned char *sel = malloc(nn ? nn : 1);
+    double *inv = malloc((nn ? nn : 1) * sizeof *inv), *work = malloc((nn ? nn : 1) * sizeof *work);
+    double *coef = malloc((nn ? nn : 1) * sizeof *coef);
+    double *norm = malloc((size_t)(ni > 0 ? ni : 1) * sizeof *norm);
+    if (!sel || !inv || !work || !coef || !norm) {
+        err = 1;
+        goto done;
+    }
+    /* the pairs with the same total (S, L); the engine's invariant becomes
+       the element of a component */
+    for (int i = 0; i < ni; i++) {
+        ac_lab FT = pb->bf[i].cpl[n];
+        norm[i] = sqrt((double)(FT.ts + 1) * (FT.tl + 1));
+        for (int j = 0; j < nj; j++) {
+            ac_lab GT = pb->bg[j].cpl[n];
+            size_t pq = (size_t)i * nj + j;
+            sel[pq] = pb->ok[pq] && FT.ts == GT.ts && FT.tl == GT.tl;
+            nsel += sel[pq];
+        }
+    }
+    if (!nsel)
+        goto done;
+
+    /* one-electron part */
+    int ndiff = pb->ndiff, u = 0, v = 0, nu = 0, nv = 0;
+    for (int s = 1; s <= n; s++) {
+        if (delta[s] == 1) u = s, nu++;
+        else if (delta[s] == -1) v = s, nv++;
+        else if (delta[s] != 0) nu = nv = 9;
+    }
+    for (int a = 1; a <= n; a++)
+        for (int b = 1; b <= n; b++) {
+            if (ndiff == 0 ? a != b : !(nu == 1 && nv == 1 && a == u && b == v))
+                continue;
+            if (bf->l[a] != bf->l[b] || bg->nel[b] == 0)
+                continue;
+            unsigned long long opm = 1ULL << a | 1ULL << b;
+            long npass = 0;
+            for (size_t pq = 0; pq < nn; pq++)
+                npass += sel[pq] && !(pb->mis[pq] & ~opm);
+            if (!npass)
+                continue;
+            ac_otree tr;
+            ac_lab p = {0, 0};
+            ac_ot_one_body(&tr, a, bf->l[a], b, bf->l[b], p);
+            ac_factor_op_block(t, &pb->B, &pb->K, &tr, 0, inv, work, &err);
+            ops += npass;
+            if (err)
+                goto done;
+            long nz = 0;
+            for (size_t pq = 0; pq < nn; pq++) {
+                coef[pq] = 0.0;
+                if (sel[pq] && !(pb->mis[pq] & ~opm) && inv[pq] != 0.0) {
+                    coef[pq] = -sqrt(2.0 * (2 * bf->l[a] + 1)) * inv[pq] / norm[pq / (size_t)nj];
+                    nz++;
+                }
+            }
+            if (nz)
+                emit(ctx, -1, seq[a], seq[b], 0, 0, coef);
+        }
+
+    /* two-electron part */
+    for (int a = 1; a <= n; a++)
+        for (int c = 1; c <= n; c++) {
+            int need[AC_CSF_MAXSH + 1], bad = 0, list[2], nl = 0;
+            for (int s = 1; s <= n; s++) {
+                need[s] = (s == a) + (s == c) - delta[s];
+                if (need[s] < 0) bad = 1;
+                for (int r = 0; r < need[s] && nl < 2; r++)
+                    list[nl++] = s;
+            }
+            if (bad || nl != 2)
+                continue;
+            for (int ord = 0; ord < 2; ord++) {
+                if (ord == 1 && list[0] == list[1])
+                    break;
+                int b = list[ord], d = list[1 - ord];
+                unsigned long long opm = 1ULL << a | 1ULL << b | 1ULL << c | 1ULL << d;
+                long npass = 0;
+                for (size_t pq = 0; pq < nn; pq++)
+                    npass += sel[pq] && !(pb->mis[pq] & ~opm);
+                if (!npass)
+                    continue;
+                int la = bf->l[a], lb = bf->l[b], lc = bf->l[c], ld = bf->l[d];
+                int kmin = abs(la - lb) > abs(lc - ld) ? abs(la - lb) : abs(lc - ld);
+                int kmax = la + lb < lc + ld ? la + lb : lc + ld;
+                for (int k = kmin; k <= kmax; k++) {
+                    if ((la + lb + k) % 2 || (lc + ld + k) % 2)
+                        continue;
+                    double hk = ac_hk(k, la, lb, lc, ld);
+                    if (hk == 0.0)
+                        continue;
+                    if (skip && skip(ctx, k, seq[a], seq[b], seq[c], seq[d]))
+                        continue;
+                    ac_otree tr;
+                    ac_lab pk = {0, 2 * k}, tot = {0, 0};
+                    ac_ot_two_body(&tr, a, la, b, lb, pk, c, lc, d, ld, pk, tot);
+                    ac_factor_op_block(t, &pb->B, &pb->K, &tr, 1, inv, work, &err);
+                    ops += npass;
+                    if (err)
+                        goto done;
+                    long nz = 0;
+                    for (size_t pq = 0; pq < nn; pq++) {
+                        coef[pq] = 0.0;
+                        if (sel[pq] && !(pb->mis[pq] & ~opm) && inv[pq] != 0.0) {
+                            coef[pq] = hk * inv[pq] / norm[pq / (size_t)nj];
+                            nz++;
+                        }
+                    }
+                    if (nz)
+                        emit(ctx, k, seq[a], seq[b], seq[c], seq[d], coef);
+                }
+            }
+        }
+done:
+    free(sel);
+    free(inv);
+    free(work);
+    free(coef);
+    free(norm);
+    if (nops)
+        *nops += ops;
+    return err;
+}
+
 void ac_expr_init(ac_expr *l)
 {
     memset(l, 0, sizeof *l);

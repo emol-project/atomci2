@@ -1,7 +1,7 @@
 {
   "title": "ATOMCI2: ATOMCI with C tools for spin-dependent atomic structure (Breit-Pauli terms and properties)",
   "upload_type": "software",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "ATOMCI2 is the ATOMCI package with C tools for spin-dependent atomic structure. It contains the Fortran program ATOMCI, the same as in emol-project/atomci (non-relativistic configuration interaction for many-electron atoms in LS coupling, with SCF and MCSCF); the C tools acatsp and acfs, which add an intermediate-coupling CI with the Breit-Pauli terms (mass velocity, Darwin, one- and two-electron spin-orbit, spin-spin, orbit-orbit, contact terms) and the properties g_J with its alpha^2 terms, hyperfine A and B, transitions E1 to M3, isotope-shift parameters, the biorthonormal transformation and the alpha^2 hfs correction of S states; and the library hexpr-atomci, their angular engine. The Python code in heff/ builds effective Hamiltonians of 3d^N ions from ATOMCI CI matrices and projects them onto the operators of the parametric theory. The C code reimplements ATOMCI's angular method, developed at Hokkaido University.",
   "creators": [
     {"name": "Sasaki, Fukashi"},

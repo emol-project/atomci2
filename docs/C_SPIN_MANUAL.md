@@ -52,6 +52,15 @@ hf.
   with `bio`.
 - `lag=l:N:b[,...]` adds N analytic Laguerre-type orbitals per l (the large
   s sets of hfsrel).
+- `lagfock[=N]` (with `lag=` and a configuration list): the added orbitals
+  are diagonalized on a screened operator instead of the bare hydrogen-like
+  h: h plus the direct and shell-averaged exchange potential of the first
+  configuration of the list, with N electrons (default 1) taken from its
+  last shells. The added orbitals span the same space. The levels are the
+  same to rounding when the list holds every distribution of its electrons
+  over the added orbitals of each l, and differ when only some are used.
+  The Davidson iteration then needs several times fewer steps on long
+  lists.
 
 ### 2.2 Configurations `configs`
 
@@ -69,8 +78,11 @@ One configuration per line:
   (for E1 with `trans`).
 - A file name ending in `.c` is read as an ATSP CSF list. The CI then uses
   exactly those CSFs, coupled as ATSP couples them.
-- With `occslots`, a CSF's slots are only the occupied orbitals of its
-  configuration. The CSFs are the same and the engine does less work.
+- A CSF's slots are only the occupied orbitals of its configuration. With
+  `allslots`, every orbital of the `.w` file is a slot of every CSF, empty
+  shells included: the CSFs and the results are the same to rounding, and
+  the engine does more work (about 6 times with 22 orbitals). `occslots`,
+  the earlier name of what is now the default, is still accepted.
 - `writec=P` also writes the CSFs as ATSP `.c` files, one per (S, L):
   `P_<2S+1><L>.c`.
 
@@ -217,7 +229,7 @@ of state 1 (bra) and state 2 (ket).
 | Option | Effect |
 |---|---|
 | `ls` ★ | No J: only the eigenvalues of each (S, L) block (`term 3F n E1 E2 ...` lines) |
-| `dav=N` ★ | J blocks of dimension ≥ N are solved by Davidson (default 500; `dav=0` always uses dsyev) |
+| `dav=N` | J blocks of dimension ≥ N are solved by Davidson (default 500; `dav=0` always uses dsyev) |
 | `digits` ★ | `trans` line strengths with 17 digits |
 | `q=...` ★ | Print radial integrals in ATSP's notation (`q=r,2p,-3`, `q=F,2,2p,2p`, `q=G,1,2s,2p`, `q=R,1,1s,2p,2s,2p`, ...) |
 
@@ -227,7 +239,123 @@ Environment variables:
 - `AC_TIME`: wall time per phase, to stderr.
 - `AC_TRANS_GS2`: g_s = 2 in M1, M2 and M3, for comparison with ATSP's
   trans.
-- `AC_SEQ_CACHE_MB`, `AC_PROP_CACHE_MB`: cache sizes.
+- `AC_SEQ_CACHE_MB`, `AC_FC_LIMIT_MB`, `AC_PROP_CACHE_MB`: cache sizes (`AC_FC_LIMIT_MB`: the kept shell
+  factors of the two-electron terms, megabytes per thread, default 128; the values do not depend on it).
+  The g factors of the J levels are computed for all the J blocks together
+  after the last block, so the lines of the levels are printed then (the
+  times of the J blocks are on stderr with `AC_TIME`; with `nog` each line
+  is printed when its block is solved). The one-body parts need no table.
+  `AC_PROP_CACHE_MB` (default 2048) limits the tables of the two-electron
+  parts of g_J (`gc2e`, `oz2e`, `rec2`): one table of n x n numbers per
+  operator, 8 n^2 bytes each (`gc2e` has three). When they do not fit,
+  these parts are computed in one pass too, without the tables; the
+  results are the same. `AC_G2_PASS=1` takes this way always,
+  `AC_G2_PASS=0` never (then every level computes its elements again, and
+  a warning on stderr says so). `AC_G_BY_LEVEL=1` computes the g factors
+  level by level as each J block is solved (the way before; slow on long
+  lists). The tables of the other quantities (`zoff`, `trans`) are still
+  limited by `AC_PROP_CACHE_MB`.
+- `AC_LSJ_DISK=<directory>`: for long lists with `so2` or `ss` (sparse
+  matrices, from 10000 CSFs). The reduced matrices of the spin-orbit and
+  spin-spin terms are kept in an unnamed file in that directory, mapped
+  into memory, instead of in allocated memory, so that the system can drop
+  them from memory when it runs short. The results are the same. The
+  directory must be on a disk with room for them (at 3×10⁵ CSFs about 26 GB
+  each).
+- `AC_DAV_NOCHECK`: skips the check for levels missed by Davidson (4.9).
+- `AC_BP_BLOCK`: the Hamiltonian, `so2`, `ss`, `gc2e` and `oz2e` are computed for the CSFs of two
+  configurations together, at most this many CSFs of a configuration at a
+  time (default 512; smaller needs less memory). `AC_BP_PAIRWISE`: compute
+  them pair by pair instead (slower, the same values).
+
+### 4.9 Files for other programs (acfs)
+
+These options of acfs leave the rest of the output as it is. They are for
+programs that take the CSFs and the eigenvectors further (an effective
+Hamiltonian, for example).
+
+| Option | Effect |
+|---|---|
+| `info` | Three lines before everything else: the version and commit, the number of configurations with the number of CSFs of each (2S+1, L), and (with `dump=`) the SHA-256 of the CSF list |
+| `dump=PREFIX` | Writes the files below; implies `info` |
+| `nlevJ=2J:n,2J:n,...` | The number of levels of single J blocks; the others keep `nlev`. `0` skips the block |
+| `tol=X` | The residual norm at which the Davidson iteration stops (default 1e-11). A larger value saves iterations in trial runs; see the caution below |
+| `dav=N` | As in acatsp (4.8) |
+| `ls` | The LS levels instead of the J levels: the Coulomb Hamiltonian h_C alone, one block for each (2S+1, L). No property. The other terms (H_SO1 unless `noso`, `so2`, `ss`, `oo`, `mvd`, `contact`) never enter these levels; they are accepted with `proj` or `dumpmat` only, for the files |
+| `nlevSL=4F:n,2[11]:n,...` | With `ls`, the number of levels of single blocks (L as its letter, or as `[number]`) |
+| `proj` | With `ls` and `dump=`: the terms between the LS levels (files below), computed in a second pass that stores no matrix. This is the output for long lists |
+| `dumpmat` | With `dump=`: every term as a matrix (files below). For short lists and tests: refused above 20000 CSFs unless `dumpmat=force` |
+| `nog` | The J levels without the Zeeman factors. On a long list the factors can take most of the time |
+
+Files of `dump=PREFIX`:
+
+- `PREFIX.csf.tsv`: one line per CSF, tab-separated, with a header line.
+  `i` (from 0; the order of every matrix and vector), `cfg` (the
+  configuration, from 0, counting the lines of `configs` that hold one),
+  `config` (as written there), `nsh`, `shells` (`seq,nel,l,code,2S+1,L` of
+  each shell, closed ones included, separated by `;`; code is the shell
+  state in CFPTBL), `cpl` (`2S+1,L` of the intermediate couplings F_0 ..
+  F_nsh), `S2p1`, `L` (the total), `key` (`shells|cpl`).
+- `PREFIX.J<2J>.idx.npy`, `.vec.npy`, `.e.npy`, `.res.npy` for each J block
+  solved (NumPy format 1.0, little endian, C order): the CSF `i` of each
+  basis function (int64, [dim]), the eigenvectors row by row (float64,
+  [nroot][dim]), the energies in hartree and the residual norms
+  |H c − E c| ([nroot]). With `ls` the files are
+  `PREFIX.S<2S+1>L<L>.*.npy`.
+- `PREFIX.meta.json`: version and commit, the options, the terms switched
+  on, the tolerance, α and g_s, the numbers of configurations and CSFs, the
+  blocks written (dimension, levels, solver, iterations, largest residual),
+  the SHA-256 of the CSF list, and the conventions: how a J block is put
+  together from h, w = ⟨i‖W‖j⟩ and w2 = ⟨i‖W_SS‖j⟩ (the formula at the top
+  of `c/include/ac_lsj.h`).
+
+- `dumpmat`: `PREFIX.<term>.i.npy`, `.j.npy` (int64) and `.v.npy` (float64),
+  the nonzero elements i ≤ j of the matrix of each term switched on, sorted
+  by i, then j. `<term>` is `h_C` (Coulomb with the one-electron part),
+  `h_OO`, `h_MVD`, `h_CONTACT`, `w_SO1`, `w_SO2`, `w_SS`. The terms of h are
+  symmetric; for those of w and w2 the element (j, i) is
+  (−1)^((S_i − S_j) + (L_i − L_j)) times the element (i, j). A J block is
+  h = h_C + h_OO + h_MVD + h_CONTACT, w = w_SO1 + w_SO2 and w2 = w_SS in the
+  formula of `meta.json` (`conventions.j_block`).
+- `proj`: `PREFIX.proj.<term>.<bra>.<ket>.npy` (float64, [levels of bra]
+  [levels of ket]; the tags are those of the LS blocks, `S4L3`), listed in
+  `meta.json` (`proj`). For `h_OO`, `h_MVD`, `h_CONTACT`: ⟨a|h_T|b⟩ between
+  the LS levels of one block. For `w_SO1`, `w_SO2`, `w_SS`: the reduced
+  ⟨a‖w_T‖b⟩ = Σ c_a(i) ⟨i‖W_T‖j⟩ c_b(j) between the levels of two blocks,
+  for every ordered pair of blocks the ranks allow. In the basis of the LS
+  levels a J block is then: the LS energies and the files of the terms of h
+  on the diagonal blocks, and the files of w and w2 times the same 6j
+  factors as for CSFs. With all LS levels this gives the J levels exactly
+  (`c/tests/s2m4/terms.sh`).
+
+With `proj` or `dumpmat` the mass velocity + Darwin and the contact terms
+are computed as matrices of their own and added to h, instead of being
+added to the integrals. The J levels then agree with those of a run without
+these options to rounding (10⁻¹² hartree), not digit for digit.
+
+The CSFs, their order and their phases depend on `configs` only, not on the
+terms switched on. The SHA-256 (of the `key` column, each key followed by a
+newline) is the check that two runs have the same list.
+
+Cautions:
+
+- Davidson starts from as many vectors as levels are wanted and stays in
+  what they span and what the Hamiltonian couples to it. A part of a block
+  that the Hamiltonian does not couple to the rest at all could so be left
+  out, and a level be missed: the two parities of a list that has both,
+  and the total (S, L) of a block without spin-dependent terms (`noso`).
+  Such parts are found from the elements of the block, each is solved
+  alone (by dsyev when it has at most 400 CSFs), and the lowest levels of
+  all are returned. A block of one part is solved as before.
+- After every Davidson solution the levels are checked against a small
+  matrix: the CSFs of lowest diagonal of each (S, L) and parity of the
+  block, about 1500 in all. Its n-th eigenvalue lies above the n-th level
+  of the block, so if it is below the n-th level returned, a level was
+  missed, and the run stops with `Davidson missed a level`. The check
+  proves a miss; passing it does not prove that there is none. The
+  environment variable `AC_DAV_NOCHECK` skips it.
+- With a large `tol=` the same can happen between parts that couple only
+  weakly. Use it for trial runs, and the default for results.
 
 ## 5. Reading the output
 

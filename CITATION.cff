@@ -6,7 +6,7 @@ message: >-
   (LEGENDS.txt, Section 4). Results of the C tools should also cite the
   ATOMCI2 technical note.
 title: "ATOMCI2: ATOMCI with C tools for spin-dependent atomic structure (Breit-Pauli terms and properties)"
-version: 1.0.0
+version: 1.1.0
 type: software
 authors:
   - family-names: Sasaki

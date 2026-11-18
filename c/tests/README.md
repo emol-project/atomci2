@@ -93,12 +93,12 @@ variables and which script must run first. Their defaults are under
 | `check-pyref`, `check-s2m1` | the general engine against PythonRef (`c/python`) | numpy |
 | `check-s2m2` | all LS terms in one run against the Fortran | `m5/run_m5.sh` first |
 | `check-s2m3` | radial integrals | numpy, scipy; `m5/run_m5.sh` first |
-| `check-s2m4` | H_SO1 and the Zeeman factors against PythonRef, analytic limits, real atoms | numpy; `m5/run_m5.sh` first |
+| `check-s2m4` | H_SO1 and the Zeeman factors against PythonRef, analytic limits, real atoms; the files of acfs `dump=` and the options `info`, `nlevJ=`, `tol=`, `dav=`, `ls` (`s2m4/dump.sh`); the terms kept apart, `dumpmat` and `proj`: the J blocks put together in Python from the files (`s2m4/terms.sh`) | numpy; `m5/run_m5.sh` and `s2m2/run_v2b.sh` first |
 | `check-s2m6` | mass velocity and Darwin against the Dirac energy of hydrogen-like ions | |
 | `check-s2m6b` | orbit-orbit against closed forms for Gaussian orbitals | |
 | `check-s2m7` | the orbit-orbit Zeeman term against a momentum-space reference | numpy |
 | `check-s2m9` | the biorthonormal transformation and the Davidson solver | |
-| `check-s2m11` | the regularized α² hfs correction against the Python prototype | numpy |
+| `check-s2m11` | the regularized α² hfs correction against the Python prototype; `lagfock` gives the levels of the bare-h orbitals (`s2m11/lagfock.sh`) | numpy |
 | `check-v5` | a determinant CI on PySCF integrals in the same basis and orbitals (about 25 minutes) | PySCF; `m5/run_m5.sh` first |
 | `check-atsp` | ATSP in its own HF orbitals | ATSP, `ATSP_SRC` |
 | `check-library` | the library hexpr-atomci alone, and its PySCF example | PySCF for the example |

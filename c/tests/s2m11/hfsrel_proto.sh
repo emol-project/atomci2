@@ -5,8 +5,8 @@
 # through the resolution of the identity as in C.
 # 1. li532: the prototype's orbitals (cusp-constrained Laguerre, 4s 3p 2d,
 #    b = 1.2, 2.5, 2.5) on ATSP's grid, every even-parity configuration of
-#    three electrons (the complete CI); run with every orbital a slot and
-#    with occslots. C interpolates the ATSP
+#    three electrons (the complete CI); run with every orbital a slot (allslots) and
+#    with the occupied orbitals only (the default). C interpolates the ATSP
 #    table, the prototype uses its own grid: agreement ~1e-6.
 # 2. lag16: the restricted space of the second order on the
 #    bare-h shell functions of the basis (16, 6, 4), b = 1.2, 1.5, 2.0: the
@@ -44,8 +44,8 @@ check() { # label, reference "name value ..." , acatsp arguments...
 }
 ref1="E -6.7518348720 A^(4) 10.87538700 K -3.3192004781 sep 7.9844841090 N2e -0.0159766729
 Breit -0.5853221251 prod -16.4619570169 anom 9.0 s2 0.9034333652 A_AN/A4 -2.4945388188"
-check "li532, all slots" "$ref1" "$here/li532.w" "$here/li532.cfg" noso hfsrel
-check "li532, occslots" "$ref1" "$here/li532.w" "$here/li532.cfg" noso hfsrel occslots
+check "li532, all slots" "$ref1" "$here/li532.w" "$here/li532.cfg" noso hfsrel allslots
+check "li532, occupied slots" "$ref1" "$here/li532.w" "$here/li532.cfg" noso hfsrel
 ref2="E -7.4689426064 A^(4) 5.8597013 K -3.363644 sep 7.283574 N2e -0.025691
 Breit -0.721204 prod -13.972100 anom 9.0 s2 14.913171 A_AN/A4 13.114106"
 check "lag16, restricted space" "$ref2" "$here/lag16.w" "$here/lag16.cfg" noso hfsrel occslots \

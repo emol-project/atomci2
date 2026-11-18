@@ -104,6 +104,9 @@ void ac_ci_free(ac_ci *ci);
    thc = NULL may evaluate elements in another thread, with its own cache;
    free it with this, not ac_ci_free. */
 void ac_ci_free_cache(ac_ci *ci);
+/* the bytes of the Theta cache of ci, and the number of its entries in *n
+   (may be NULL) */
+size_t ac_ci_cache_bytes(const ac_ci *ci, size_t *n);
 
 /* <i|H|j> between CSFs i and j (same S and L). */
 double ac_ci_hij(ac_ci *ci, int i, int j, int *err);
@@ -123,6 +126,14 @@ double ac_ci_one(ac_ci *ci, int i, int j, int ks, int kl,
    both l, and the orbital factor of f is <l_a||u||l_b>. */
 double ac_ci_one_ll(ac_ci *ci, int i, int j, int ks, int kl,
                     double (*f)(void *ctx, int a, int b, int la, int lb), void *ctx, int *err);
+/* ac_ci_one_ll for nf (at most AC_CI_ONE_N) operators of the same ranks at
+   once: out[x] is the number ac_ci_one_ll gives with ctx[x], and the
+   coupling of each orbital pair is evaluated once for all of them.
+   Returns 0, or -1 with *err set. */
+#define AC_CI_ONE_N 8
+int ac_ci_one_ll_n(ac_ci *ci, int i, int j, int ks, int kl,
+                   double (*f)(void *ctx, int a, int b, int la, int lb), int nf,
+                   void *const *ctx, double *out, int *err);
 double ac_ci_one_coef(double spin_reduced, double orbital_reduced, int ks, int kl);
 
 /* The reduced element <i||W||j> of the double tensor
@@ -181,6 +192,41 @@ extern int ac_atsp_compat;
    times the J-scalar of :((b_a b~_b)^(1 lam) (b_c b~_d)^(1 k))^(2 2):.
    0 when ci->in.rss is NULL. */
 double ac_ci_ss(ac_ci *ci, int i, int j, int *err);
+
+/* ac_ci_so2 and ac_ci_ss for all the pairs (i0 + i, j0 + j), i < ni, j < nj,
+   where the CSFs i0 .. i0+ni-1 have the same orbitals and occupations, and
+   so have j0 .. j0+nj-1 (two configurations):
+     so2[i * nj + j] = ac_ci_so2(ci, i0 + i, j0 + j),  ss likewise,
+   bit for bit, but with the operators set up once and each evaluated for
+   all the pairs together. so2 or ss may be NULL (not computed). upper = 1
+   (for i0 == j0): only j >= i is wanted, the other elements are left 0.
+   tsec, when not NULL, has the wall times of the two parts added to
+   tsec[0] and tsec[1]. Returns 0, or -1 with the error in *err (as
+   ac_ci_so2; 1 also when out of memory). */
+int ac_ci_bp2_block(ac_ci *ci, int i0, int ni, int j0, int nj, int upper, double *so2, double *ss,
+                    double *tsec, int *err);
+
+/* The same for H_OO: out[ni * nj] = ac_ci_oo of every pair (0 for j < i when
+   upper is set, and for the pairs whose total (S, L) differ). */
+int ac_ci_oo_block(ac_ci *ci, int i0, int ni, int j0, int nj, int upper, double *out, int *err);
+
+/* The same for the Coulomb Hamiltonian:
+     out[i * nj + j] = ac_ci_hij(ci, i0 + i, j0 + j),
+   bit for bit (0 between different total (S, L), and for j < i with
+   upper = 1). Returns 0, or -1 with the error in *err (as ac_ci_hij). */
+int ac_ci_hij_block(ac_ci *ci, int i0, int ni, int j0, int nj, int upper, double *out, int *err);
+
+/* The same for lists of CSFs: fi[0..nf-1] of one configuration and
+   gj[0..ng-1] of one configuration,
+     out[p * ng + q] = ac_ci_hij(ci, fi[p], gj[q]). */
+int ac_ci_hij_list(ac_ci *ci, int nf, const int *fi, int ng, const int *gj, double *out, int *err);
+
+/* The same for two-electron property operators: kp = 0, 1, 2 gives
+     out[i * nj + j] = ac_ci_gc2e(ci, i0 + i, j0 + j, kp),
+   kp = -1 gives ac_ci_oz2e(ci, i0 + i, j0 + j), bit for bit, for all the
+   pairs of the two configurations. Returns 0; -1 with the error in *err;
+   -2 for another kp (nothing computed). */
+int ac_ci_prop2_block(ac_ci *ci, int kp, int i0, int ni, int j0, int nj, double *out, int *err);
 
 /* <i|H_OO|j> (same S and L) of the orbit-orbit operator
      H_OO = -(alpha^2/2) sum_{p<q} [p_p.p_q + r_pq.(r_pq.p_p) p_q / r_pq^2] / r_pq.
@@ -283,6 +329,14 @@ int ac_ci_eigvecs(int n, double *H, double *w);
    lower triangle used; destroyed) via LAPACK dsyev. Returns 0 or info. */
 int ac_ci_eigvals(int n, double *H, double *w);
 
+/* The number of eigenvalues below sigma of the symmetric n x n matrix H
+   (column-major, lower triangle used; destroyed), in *count: H - sigma is
+   factorized as L D L^T (LAPACK dsytrf, D of 1 x 1 and 2 x 2 blocks), and
+   D has as many negative eigenvalues as H - sigma (Sylvester's law of
+   inertia). About a quarter of the work of ac_ci_eigvals. Returns 0, or
+   nonzero (memory, LAPACK). */
+int ac_ci_count_below(int n, double *H, double sigma, int *count);
+
 /* The k lowest eigenvalues w[0..k-1] (ascending) and eigenvectors (the k
    columns of x, n x k) of the symmetric n x n matrix H (column-major, both
    triangles; not changed), by Davidson's method (E. R. Davidson, J. Comput.
@@ -290,10 +344,39 @@ int ac_ci_eigvals(int n, double *H, double *w);
    expansion method ...", in Numerical Algorithms in Chemistry: Algebraic
    Methods, C. Moler and I. Shavitt (eds.), LBL-8158 (1978), p. 49) with
    the diagonal preconditioner. Starts from the lowest eigenvectors of the
-   block of the (at least 200) lowest diagonal elements; converged when
+   block of the (at least 200) lowest diagonal elements; the subspace holds
+   up to 8k + 48 vectors and restarts from its 3k lowest Ritz vectors;
+   converged when
    every residual |H x_j - w_j x_j| < tol. Returns 0, 1 (not converged; w and
    x hold the last Ritz pairs), or nonzero otherwise (memory, LAPACK). The
    number of iterations in *niter (may be NULL). */
 int ac_ci_davidson(int n, const double *H, int k, double tol, double *w, double *x, int *niter);
+
+/* The same for a symmetric matrix that is not stored: mul(ctx, m, V, AV)
+   gives AV = H V for m columns of length n (column-major), elem(ctx, a, b)
+   the element (a, b); elem is asked for the diagonal and for the block of
+   the start vectors only. The same method step by step. */
+int ac_ci_davidson_op(int n, void (*mul)(void *ctx, int m, const double *V, double *AV),
+                      double (*elem)(void *ctx, int a, int b), void *ctx, int k, double tol,
+                      double *w, double *x, int *niter);
+
+/* The same two for a matrix that falls into np parts which H does not
+   couple at all (part[i] in 0..np-1 for each row; the two parities of a
+   list that has both, the total (S, L) of a J block without spin-dependent
+   terms). Davidson stays in what its start vectors span and what H couples
+   to it, so on the whole matrix it can miss a level of a part its start
+   left out. Here each part is solved alone (its min(k, size) lowest levels;
+   by dsyev when it has at most 400 rows) and the k lowest of all are
+   returned. np <= 1: as ac_ci_davidson. With parts, mul is asked for
+   vectors that are 0 outside one part and must give 0 there; sel(ctx, part,
+   cur), when not NULL, tells the operator that part before (part NULL:
+   all rows again), so that it can skip the other rows. *niter: the sum over
+   the parts. */
+int ac_ci_davidson_parts(int n, const double *H, int np, const int *part, int k, double tol,
+                         double *w, double *x, int *niter);
+int ac_ci_davidson_op_parts(int n, void (*mul)(void *ctx, int m, const double *V, double *AV),
+                            double (*elem)(void *ctx, int a, int b),
+                            void (*sel)(void *ctx, const int *part, int cur), void *ctx, int np,
+                            const int *part, int k, double tol, double *w, double *x, int *niter);
 
 #endif

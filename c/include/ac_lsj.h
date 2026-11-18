@@ -20,22 +20,136 @@
 
 #include <stdio.h>
 
+/* a sparse matrix by rows: the elements of row i are val[start[i] ..
+   start[i+1]-1] in the columns col[...], ascending */
+typedef struct {
+    size_t *start; /* [n+1] */
+    int *col;
+    double *val;
+} ac_lsj_csr;
+
+/* A file mapped into memory that holds rows instead of allocations (w and w2
+   with AC_LSJ_DISK): the mapping, its length, how much of the file is
+   allocated and how much is given out. The rows of the CSFs of one total
+   (S, L) are kept together, in pieces of the file that belong to that label
+   (at, left: the free part of the current piece of each label; next: the
+   size of its next piece), because a J block reads the rows of some labels
+   and a disk reads fast only what lies together. map is NULL without a
+   file. */
+typedef struct {
+    char *map;
+    size_t maplen, mapalloc, mapused;
+    int fd;
+    int nlab;
+    char **at;
+    size_t *left, *next;
+} ac_lsj_file;
+
+/* the nonzero elements with j >= i of an n x n matrix, row by row: row i
+   has len[i] elements val[i][...] in the columns col[i][...], ascending.
+   The rows of one configuration share an allocation (slab), or the rows are
+   in `file` (not owned; then there are no slabs). len is NULL when there is
+   no matrix. */
+typedef struct {
+    int *len;     /* [n] */
+    int **col;    /* [n] */
+    double **val; /* [n] */
+    void **slab;
+    int nslab;
+    size_t nnz;
+    ac_lsj_file *file;
+} ac_lsj_rows;
+
 typedef struct {
     int n;     /* number of CSFs                                        */
     double *h; /* [n*n] <i|H|j> (+ H_OO), 0 unless (S, L) agree         */
     double *w; /* [n*n] <i||W||j>, NULL without H_SO1 and H_SO2         */
     double *w2; /* [n*n] <i||W_SS||j> (spin 2, orbital 2), NULL without SS */
+    /* sparse: h, w and w2 are NULL and the nonzero elements with j >= i are
+       in sh, sw and sw2 (sw.len, sw2.len NULL as w, w2 above); the
+       elements with j < i follow from the symmetry (ac_lsj.c) */
+    int sparse;
+    ac_lsj_rows sh, sw, sw2;
+    ac_lsj_file wfile; /* AC_LSJ_DISK: the rows of sw and sw2 */
+    /* sparse with w or w2: what a J block needs to know of their rows before
+       it reads them (they may be in a file). glab[i] is the number of the
+       total (S, L) of CSF i among the nglab different ones; wcnt[i * nglab +
+       y] the number of columns j > i with glab[j] = y in which row i has an
+       element of w or of w2; wdiag[i] and wdiag[n + i] the diagonal elements
+       of w and w2 (0 when there is none). NULL otherwise. */
+    int nglab;
+    int *glab;
+    unsigned *wcnt;
+    double *wdiag;
 } ac_lsj;
+
+/* The matrices are kept sparse when ci has at least ac_lsj_sparse_from CSFs
+   (default 10000; 0: never; AC_LSJ_SPARSE or AC_LSJ_DENSE in the environment:
+   always or never). The elements are the same numbers either way; the J
+   blocks then go to Davidson as sparse matrices, whose H x adds the products
+   in another order (results to rounding). */
+extern int ac_lsj_sparse_from;
+/* AC_LSJ_DISK=<directory> in the environment (sparse matrices only): the
+   rows of w and w2 are kept in a file there (unnamed: it vanishes when
+   the program ends), mapped into memory, instead of in allocated memory. The
+   system can then write them out and drop them from memory when it runs
+   short, which allocated memory needs swap space for. For lists whose w and
+   w2 (SO2, SS) do not fit into the memory: at 3e5 CSFs about 26 GB each.
+   The numbers and the results are the same. The directory must be on a
+   disk (not a memory file system) with that much room. h stays in memory
+   (every H x of the Davidson iteration reads it); w and w2 are read once
+   per J block, whose own elements are then held in memory. In the file the
+   rows of one total (S, L) lie together and a block reads them in the order
+   of the file. */
+
+/* The terms of the matrices, kept apart for programs outside (tools/acfs.c,
+   "dumpmat" and "proj"). h of ac_lsj is the sum of AC_LSJ_HC (the Hamiltonian
+   of ci->in.h and ci->in.rk), AC_LSJ_OO and the extra terms; w of AC_LSJ_SO1
+   and AC_LSJ_SO2; w2 is AC_LSJ_SS.
+   An extra term is the same Hamiltonian expression on other integrals (it is
+   linear in them): h and rk as in ac_ci_integrals with their own ctx. acfs
+   gives the mass velocity + Darwin term (h alone) and the two-electron
+   contact terms (rk alone) this way when they are to be kept apart, instead
+   of adding them to the integrals of ci. At most AC_LSJ_MAXEXTRA. */
+enum { AC_LSJ_HC, AC_LSJ_OO, AC_LSJ_SO1, AC_LSJ_SO2, AC_LSJ_SS, AC_LSJ_EXTRA };
+#define AC_LSJ_MAXEXTRA 4
+typedef struct {
+    const char *name; /* in file names, "h_MVD" */
+    double (*h)(void *ctx, int a, int b);
+    double (*rk)(void *ctx, int k, int a, int b, int c, int d);
+    void *ctx;
+} ac_lsj_hterm;
+extern const ac_lsj_hterm *ac_lsj_extra;
+extern int ac_lsj_nextra;
+/* When ac_lsj_sink is set, ac_lsj_prepare calls it for every nonzero value
+   of a term (AC_LSJ_..., AC_LSJ_EXTRA + k) of a CSF pair i <= j:
+   sink(ctx, term, i, j, value); the element (j, i) is the same for the
+   terms of h and (-1)^((S_i - S_j) + (L_i - L_j)) times it for those of w
+   and w2. It is called from all the threads at once (omp_get_thread_num()
+   tells which).
+   ac_lsj_nostore: the pass stores nothing (m is of no use afterwards);
+   ac_lsj_skip_hc: AC_LSJ_HC is not computed. Both for a second pass that
+   only feeds the sink. */
+extern void (*ac_lsj_sink)(void *ctx, int term, int i, int j, double v);
+extern void *ac_lsj_sink_ctx;
+extern int ac_lsj_nostore, ac_lsj_skip_hc;
 
 int ac_lsj_prepare(ac_lsj *m, ac_ci *ci, char *err, int errlen);
 void ac_lsj_free(ac_lsj *m);
 
 /* The basis of 2J = tJ: its CSF indices in idx[] (room for ci->ncsf) and
-   the dim x dim matrix in H (column-major, room for ncsf^2). Returns dim.
+   the dim x dim matrix in H (column-major, room for dim^2). Returns dim, or
+   -1 when out of memory (sparse m only).
    *asym receives max |H - H^T| before symmetrization (a check of the
-   phases: H_SO1 is Hermitian). */
+   phases: H_SO1 is Hermitian; 0 for a sparse m, which is symmetrized as it
+   is put together). */
 int ac_lsj_matrix(const ac_lsj *m, const ac_ci *ci, int tJ, int *idx, double *H,
                   double *asym);
+
+/* The same matrix from a sparse m as a sparse matrix: its upper triangle
+   by rows (columns >= row; free the three arrays of *A with free). Returns
+   dim, or -1 when out of memory or m is not sparse. */
+int ac_lsj_matrix_csr(const ac_lsj *m, const ac_ci *ci, int tJ, int *idx, ac_lsj_csr *A);
 
 /* <S L J || [W^(ks,kl)]^(K) || S' L' J'> from w = <S L || W || S' L'>, with
    [W]^(K)_Q = sum <ks nu kl q|K Q> W_(nu q) (spin first; Edmonds 7.1.5):
@@ -210,6 +324,45 @@ extern int ac_lsj_digits;
    solved by Davidson for the nlev lowest levels only (ac_ci_davidson,
    residual 1e-11); smaller ones by dsyev. 0: always dsyev. Default 500. */
 extern int ac_lsj_davidson;
+/* The residual norm at which the Davidson iteration stops. Default 1e-11. */
+extern double ac_lsj_tol;
+/* The number of levels of single blocks: when ac_lsj_nlev_j is not NULL and
+   tJ < ac_lsj_nlev_j_len and ac_lsj_nlev_j[tJ] >= 0, the block 2J = tJ gives
+   that many levels instead of nlev (0: the block is skipped). */
+extern const int *ac_lsj_nlev_j;
+extern int ac_lsj_nlev_j_len;
+/* The same for the blocks of ac_lsj_print_ls: ac_lsj_nlev_sl_n triples
+   (2S, 2L, number of levels). */
+extern const int *ac_lsj_nlev_sl;
+extern int ac_lsj_nlev_sl_n;
+
+/* When ac_lsj_dump is not NULL, ac_lsj_print_levels and ac_lsj_print_ls
+   write, for every block they solve, the files (NumPy .npy, ac_dump.h)
+     PREFIX.TAG.idx.npy  int64 [dim]: the CSF (from 0) of each basis function
+     PREFIX.TAG.vec.npy  float64 [nroot][dim]: the eigenvectors, row by row
+     PREFIX.TAG.e.npy    float64 [nroot]: the energies (hartree)
+     PREFIX.TAG.res.npy  float64 [nroot]: |H c - E c| of each
+   with PREFIX = ac_lsj_dump and TAG = "J<2J>" or, for ac_lsj_print_ls,
+   "S<2S+1>L<L>". ac_lsj_dump_blocks() returns what was written as the
+   elements of a JSON array (one object per block; "" before any block). */
+extern const char *ac_lsj_dump;
+const char *ac_lsj_dump_blocks(void);
+/* With ac_lsj_dump: ac_lsj_dumpmat nonzero also writes every term as the
+   nonzero elements i <= j of its matrix, PREFIX.<term>.i.npy, .j.npy (int64)
+   and .v.npy (float64), sorted by i, then j; <term> is h_C, h_OO, w_SO1,
+   w_SO2, w_SS or the name of an extra term. Refused above 20000 CSFs unless
+   ac_lsj_dumpmat is 2.
+   ac_lsj_proj nonzero (ac_lsj_print_ls only) writes the terms between the LS
+   levels: for h_OO and the extra terms <a|h_T|b> within each block, for
+   w_SO1, w_SO2 and w_SS the reduced <a||w_T||b> between every two blocks
+   their ranks allow (both orders), as
+   PREFIX.proj.<term>.<bra tag>.<ket tag>.npy (float64 [nroot bra][nroot
+   ket]). ac_lsj_dump_proj() lists them as the elements of a JSON array. */
+extern int ac_lsj_dumpmat, ac_lsj_proj;
+const char *ac_lsj_dump_proj(void);
+/* nonzero: ac_lsj_print_levels prints the levels without the Zeeman factors
+   (which can take most of the time of a long list) */
+extern int ac_lsj_nog;
 
 /* Isotope shift: expectation values (J-scalars) in one level of
      nms   K_NMS = <sum_i p_i^2/2>          (hartree)
@@ -252,6 +405,15 @@ extern double (*ac_lsj_hfs_rm3)(void *, int, int);
 extern double (*ac_lsj_hfs_r00)(void *, int, int);
 int ac_lsj_print_levels(FILE *out, ac_ci *ci, int nlev, double (*tkin)(void *, int, int),
                         double (*zr)(void *, int, int), void *ctx, char *err, int errlen);
+
+/* The LS levels: those of AC_LSJ_HC alone (the other terms that ci and
+   ac_lsj_extra hold are left out of the matrix), one block for each total
+   (S, L) of the CSFs, in the order of 2S+1, then L. Prints the lowest nlev
+   levels of each block (see ac_lsj_nlev_sl) and writes them when
+   ac_lsj_dump is set. The CSFs and their phases are those of
+   ac_lsj_print_levels. With ac_lsj_proj or ac_lsj_dumpmat a second pass
+   computes the other terms for these files without storing them. */
+int ac_lsj_print_ls(FILE *out, ac_ci *ci, int nlev, char *err, int errlen);
 
 /* A printed level: its eigenvector, number within its J (from 1) and
    energy (hartree). */

@@ -6,6 +6,8 @@
  *   eigenvector |<x|x_ref>| within 1e-11 of 1, the residuals below tol;
  *   a nearly degenerate lowest pair (gap 1e-7): the eigenvalues and the
  *   projector on the pair's span; the matrix is left unchanged.
+ * ac_ci_count_below (the eigenvalues below a threshold, from the inertia of
+ * L D L^T) against the eigenvalues of dsyev.
  *
  * usage: test_davidson
  */
@@ -118,6 +120,31 @@ static void run(const char *name, int n, int k, double c, double gap)
     free(x);
 }
 
+/* ac_ci_count_below against the eigenvalues of dsyev, for thresholds between them */
+static void count(const char *name, int n, double c)
+{
+    double *H = make(n, c, -1.0), *R = malloc((size_t)n * n * sizeof *R);
+    double *wr = malloc((size_t)n * sizeof *wr);
+    memcpy(R, H, (size_t)n * n * sizeof *R);
+    int bad = ac_ci_eigvals(n, R, wr) != 0;
+    static const int at[] = {0, 1, 2, 7, 100, 333};
+    for (int t = 0; t <= 6 && !bad; t++) {
+        int want = t < 6 ? at[t] : n, got = -1;
+        if (want > n)
+            continue;
+        double sigma = want == 0 ? wr[0] - 1.0 : want == n ? wr[n - 1] + 1.0
+                                                           : 0.5 * (wr[want - 1] + wr[want]);
+        memcpy(R, H, (size_t)n * n * sizeof *R);
+        bad = ac_ci_count_below(n, R, sigma, &got) != 0 || got != want;
+    }
+    char lab[96];
+    snprintf(lab, sizeof lab, "%s: eigenvalues below a threshold counted", name);
+    report(lab, bad, 0);
+    free(H);
+    free(R);
+    free(wr);
+}
+
 int main(void)
 {
     run("n 600, k 1", 600, 1, 0.02, -1.0);
@@ -125,6 +152,9 @@ int main(void)
     run("n 1200, k 3, strong coupling", 1200, 3, 0.1, -1.0);
     run("n 800, k 2, gap 1e-7", 800, 2, 0.02, 1e-7);
     run("n 150 (below the start block), k 2", 150, 2, 0.05, -1.0);
+    count("n 600", 600, 0.02);
+    count("n 500, strong coupling", 500, 0.3);
+    count("n 3", 3, 0.5);
     printf("%s\n", nfail ? "test_davidson: FAILED" : "test_davidson: all ok");
     return nfail != 0;
 }

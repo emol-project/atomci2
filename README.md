@@ -192,6 +192,8 @@ The C tools:
 | [docs/FPL_LANGUAGE_SPEC.md](docs/FPL_LANGUAGE_SPEC.md) | Quick reference for FPL, the in-tree Fortran preprocessor language |
 | [ATOMCI2 technical note](https://doi.org/10.5281/zenodo.24223209) | **Technical note** (PDF, on Zenodo): the formulation of the C tools (angular algebra, Breit–Pauli terms, properties) and their validation, and the effective Hamiltonians of `heff/` |
 | [docs/C_SPIN_MANUAL.md](docs/C_SPIN_MANUAL.md) | **Input manual of the C tools** `acatsp` and `acfs`: options, input files, reading the output, the examples |
+| [docs/C_PERFORMANCE.md](docs/C_PERFORMANCE.md) | Long CSF lists with the C tools: times and memory measured, the settings that matter, what is not done yet |
+| [CHANGELOG.md](CHANGELOG.md) | The changes of each release |
 | [c/README.md](c/README.md) | The C modules and tools |
 | [c/examples/README.md](c/examples/README.md) | The examples of the C tools |
 | [c/tests/README.md](c/tests/README.md) | The checks and the comparisons with other programs and the literature |

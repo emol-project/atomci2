@@ -39,7 +39,7 @@ M0_RUN    ?= $(AC_WORK)/m0/run
 BUILD := build
 SRCS  := src/ac_smat.c src/ac_addr.c src/ac_tape.c src/ac_ints.c src/ac_ci.c \
          src/ac_basis.c src/ac_radial.c src/ac_lsj.c src/ac_tabrad.c \
-         src/ac_biorth.c src/ac_hfsrel.c
+         src/ac_biorth.c src/ac_hfsrel.c src/ac_dump.c
 TOOLS := $(BUILD)/acgen $(BUILD)/nfte_dump $(BUILD)/acci $(BUILD)/acterms $(BUILD)/acrad $(BUILD)/acfs $(BUILD)/acatsp \
          $(BUILD)/cfpgen
 # system BLAS/LAPACK for the CI diagonalization (as src/Makefile)
@@ -61,6 +61,20 @@ $(BUILD)/%: tools/%.c $(LIB)
 
 $(BUILD):
 	mkdir -p $@
+
+# The version (CITATION.cff) and the commit for acfs "info" and "dump=": from
+# git, or from the note a copy without .git carries (.mcp-source); "-dirty"
+# when the work tree differs from the commit. Rewritten only when it changes.
+AC_VERSION := $(shell sed -n 's/^version: *//p' ../CITATION.cff 2>/dev/null)
+AC_COMMIT  := $(shell git -C .. describe --always --dirty --abbrev=7 --match=no-tag 2>/dev/null || \
+                sed -n 's/^source: HEAD = \(.......\).*/\1/p' ../.mcp-source 2>/dev/null)
+.PHONY: FORCE
+$(BUILD)/ac_commit.h: FORCE | $(BUILD)
+	@printf '#define AC_VERSION "%s"\n#define AC_COMMIT "%s"\n' \
+	    "$(or $(AC_VERSION),unknown)" "$(or $(AC_COMMIT),unknown)" > $@.tmp
+	@cmp -s $@.tmp $@ && rm -f $@.tmp || mv $@.tmp $@
+$(BUILD)/acfs: CPPFLAGS += -I$(BUILD)
+$(BUILD)/acfs: $(BUILD)/ac_commit.h
 
 $(HXA_LIB): $(wildcard $(HEXPR_ATOMCI)/src/* $(HEXPR_ATOMCI)/include/*)
 	$(MAKE) -C $(HEXPR_ATOMCI)
@@ -184,6 +198,8 @@ $(BUILD)/acso: tests/acso.c $(LIB)
 check-s2m4: $(BUILD)/acso $(TOOLS)
 	cd python && $(PYREF_PYTHON) test_s2m4.py ../$(BUILD)/acso $(FTN_BUILD)/CFPTBL
 	bash tests/s2m4/run_real.sh
+	PYTHON=$(PYREF_PYTHON) bash tests/s2m4/dump.sh
+	PYTHON=$(PYREF_PYTHON) bash tests/s2m4/terms.sh
 
 $(BUILD)/test_biorth: tests/test_biorth.c $(LIB)
 	$(CC) $(CPPFLAGS) $(CFLAGS) $< -o $@ $(LIB) $(LAPACK_LINK) $(LDLIBS)
@@ -198,6 +214,7 @@ $(BUILD)/test_davidson: tests/test_davidson.c $(LIB)
 # Python prototype in the same orbitals
 check-s2m11: $(TOOLS)
 	FTN_BUILD=$(FTN_BUILD) bash tests/s2m11/hfsrel_proto.sh
+	FTN_BUILD=$(FTN_BUILD) bash tests/s2m11/lagfock.sh
 
 check-s2m9: $(BUILD)/test_biorth $(BUILD)/test_davidson
 	$< $(FTN_BUILD)/CFPTBL
