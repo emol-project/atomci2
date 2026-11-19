@@ -69,10 +69,11 @@ for other programs, and one correction.
 
 ### Documents
 
-- The technical note on Zenodo (version 1.0) describes 1.0.0. The
-  formulation is unchanged; the options added here are in the
-  [input manual](docs/C_SPIN_MANUAL.md), and the times of its performance
-  section are superseded by [docs/C_PERFORMANCE.md](docs/C_PERFORMANCE.md).
+- The [technical note](https://doi.org/10.5281/zenodo.24223209) is revised
+  with this release (version 1.1 of the note): the Davidson solver, the
+  times of long lists, the options added here and the files for other
+  programs. The formulation is unchanged. Version 1.0 of the note describes
+  1.0.0.
 
 ### Compatibility
 
